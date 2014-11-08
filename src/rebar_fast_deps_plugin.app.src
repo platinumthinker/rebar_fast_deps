@@ -1,0 +1,11 @@
+{application, rebar_fast_deps_plugin,
+ [
+  {description, "Plugin for fust deps update"},
+  {vsn, "0.0.1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {env, []}
+ ]}.
