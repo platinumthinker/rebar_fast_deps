@@ -1,4 +1,4 @@
--module(rebar_fast_deps_plugin).
+-module(rebar_fast_deps).
 
 -export([
          'fast-update-deps'/2

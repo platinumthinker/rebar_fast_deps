@@ -1,4 +1,4 @@
-{application, rebar_fast_deps_plugin,
+{application, rebar_fast_deps,
  [
   {description, "Plugin for fust deps update"},
   {vsn, "0.0.1"},
