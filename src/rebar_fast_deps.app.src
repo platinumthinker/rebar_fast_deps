@@ -1,6 +1,6 @@
 {application, rebar_fast_deps,
  [
-  {description, "Plugin for fust deps update"},
+  {description, "Plugin for fast deps update"},
   {vsn, "0.0.1"},
   {registered, []},
   {applications, [
