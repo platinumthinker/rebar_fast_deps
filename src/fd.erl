@@ -1,23 +1,38 @@
--module(rebar_fast_deps).
+-module(fd).
 
 -export([
-         'fast-update-deps'/2
+         main/1
         ]).
 
--include_lib("rebar.hrl").
+-include("rebar.hrl").
+-define(REBAR_CFG, "rebar.config").
 
-'fast-update-deps'(Config, _AppFile) ->
-    bfs(Config),
-    ok.
+main([Command]) ->
+    {ok, Dir} = file:get_cwd(),
+    main([Command, Dir]);
+main([A, WD]) when A == "update"; A == "up" ->
+    bfs(WD);
+main(["help", _]) ->
+    io:format("Usage: fd <command> [path] (fast deps)~n"
+              "Commands:"
+              "  update (u) - For update rebar deps~n");
+main(Args) ->
+    io:format("Command ~p not recognized.~n", [Args]),
+    main(["help"]).
 
 %% @doc Breadth-first search
-bfs(Config) ->
-    DepsList = rebar_config:get(Config, deps, []),
-    Q = queue:from_list(DepsList),
-    DepsFolder = case rebar_config:get(Config, deps_dir, []) of
-        []  ->  undefined;
-        Dir ->  filename:join(rebar_utils:get_cwd(), Dir)
+bfs(Path) ->
+    ok = file:set_cwd(Path),
+    {DepsFldr, DepsList} = case file:consult(?REBAR_CFG) of
+        {ok,    Config} ->
+            {
+             proplists:get_value(deps_dir, Config, []),
+             proplists:get_value(deps, Config, "deps")
+            };
+        {error, enoent} -> {[], "deps"}
     end,
+    Q = queue:from_list(DepsList),
+    DepsFolder = filename:join(Path, DepsFldr),
     case bfs_step(DepsFolder, Q, gb_sets:new()) of
         ok ->
             ok;
@@ -28,14 +43,12 @@ bfs(Config) ->
 bfs_step(Dir, Queue, ViewedDeps) ->
     case queue:out(Queue) of
         {{value, {App, _Vsn, Source}}, Q} ->
-            ?CONSOLE("~p~n", [App]),
             AppDir = update_app(Dir, App, Source),
             ok = file:set_cwd(AppDir),
-            Child = case file:consult("rebar.config") of
+            Child = case file:consult(?REBAR_CFG) of
                 {ok,    Config} -> proplists:get_value(deps, Config, []);
                 {error, enoent} -> []
             end,
-            ?DEBUG("Childs ~p~n", [[A || {A, _, _} <- Child]]),
             {NewQ, NewS} = lists:foldl(
                      fun(Item = {Dep, _, _}, {AccQ, AccS}) ->
                              case gb_sets:is_member(Dep, AccS) of
@@ -46,7 +59,10 @@ bfs_step(Dir, Queue, ViewedDeps) ->
                                      };
                                  true ->
                                      {AccQ, AccS}
-                             end
+                             end;
+                        (Item, {AccQ, AccS}) ->
+                             ?WARN("Drop ~p~n", [Item]),
+                             {AccQ, AccS}
                      end, {Q, ViewedDeps}, Child),
             bfs_step(Dir, NewQ, NewS);
         {empty, _} ->
@@ -57,8 +73,10 @@ update_app(Dir, App, Source) ->
     AppDir = filename:join(Dir, App),
     {ok, _} = case filelib:is_dir(AppDir) of
         true ->
+            io:format("Update ~p from ~p~n", [App, Source]),
             update_source(AppDir, Source);
         false ->
+            io:format("Download ~p from ~p~n", [App, Source]),
             download_source(AppDir, Source)
     end,
     AppDir.
