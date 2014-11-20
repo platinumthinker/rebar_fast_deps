@@ -34,7 +34,7 @@ bfs_step(Dir, Queue, ViewedDeps, DownloadList, Downloaded) ->
     NewDwled = lists:foldl(
       fun({App, _VSN, Source}, AccD) ->
               spawn(?MODULE, update_app, [Dir, App, Source]),
-              timer:sleep(20),
+              timer:sleep(30),
               gb_sets:add(App, AccD);
          (Drop, AccD) -> ?ERROR("Drop ~p", [Drop]), AccD
       end, Downloaded, DownloadList),
@@ -42,7 +42,7 @@ bfs_step(Dir, Queue, ViewedDeps, DownloadList, Downloaded) ->
       fun({_, _, _}) ->
               receive
                   Res ->
-                      io:format(Res)
+                      ?CONSOLE(Res, [])
               end;
          (_) -> nothing
       end, DownloadList),
@@ -75,7 +75,6 @@ bfs_step(Dir, Queue, ViewedDeps, DownloadList, Downloaded) ->
                              ?WARN("Drop ~p~n", [Item]),
                              {AccQ, AccS, AccD}
                      end, {Q, ViewedDeps, []}, Child),
-            io:format("==== === ~n~p~n=====~n", [DownloadL]),
             bfs_step(Dir, NewQ, NewS, DownloadL, NewDwled);
         {empty, _} ->
             none
@@ -86,10 +85,10 @@ update_app(Dir, App, Source) ->
     Res = case filelib:is_dir(AppDir) of
         true ->
             update_source(AppDir, Source),
-            io_lib:format("~p from ~p~n", [App, Source]);
+            io_lib:format("Update \e[1m\e[32m~p\e[0m from ~200p", [App, Source]);
         false ->
             download_source(AppDir, Source),
-            io_lib:format("~p from ~p~n", [App, Source])
+            io_lib:format("Download \e[1m\e[32m~p\e[0m from ~200p", [App, Source])
     end,
     ?ROOT ! Res.
 

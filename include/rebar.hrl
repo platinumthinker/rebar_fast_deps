@@ -4,7 +4,7 @@
 -define(FAIL, rebar_utils:abort()).
 -define(ABORT(Str, Args), rebar_utils:abort(Str, Args)).
 
--define(CONSOLE(Str, Args), io:format(Str, Args)).
+-define(CONSOLE(Str, Args), io:format(Str ++ "~n", Args)).
 
 -define(DEBUG(Str, Args), io:format(Str ++ "~n", Args)).
 -define(INFO(Str, Args), io:format(Str ++ "~n", Args)).
