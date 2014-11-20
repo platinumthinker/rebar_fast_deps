@@ -15,7 +15,7 @@ main([A, WD]) when A == "update"; A == "up" ->
 main(["help", _]) ->
     io:format("Usage: fd <command> [path] (fast deps)~n"
               "Commands:"
-              "  update (u) - For update rebar deps~n");
+              "  update (up) - For update rebar deps~n");
 main(Args) ->
     io:format("Command ~p not recognized.~n", [Args]),
     main(["help"]).
