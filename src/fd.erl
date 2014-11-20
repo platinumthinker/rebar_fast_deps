@@ -52,8 +52,8 @@ bfs_step(Dir, Queue, ViewedDeps, DownloadList) ->
     lists:foreach(
       fun({_, _, _}) ->
               receive
-                  {_, Res} ->
-                      io:format(Res ++ "~n~n")
+                  Res ->
+                      io:format(Res)
               % after ?TIMEOUT ->
               %   exit("Timeout when update dep")
               end;
@@ -93,11 +93,11 @@ update_app(Dir, App, Source) ->
     AppDir = filename:join(Dir, App),
     Res = case filelib:is_dir(AppDir) of
         true ->
-            io_lib:format("Update ~p from ~p~n", [App, Source]),
-            update_source(AppDir, Source);
+            update_source(AppDir, Source),
+            io_lib:format("Update ~p from ~p~n", [App, Source]);
         false ->
-            io_lib:format("Download ~p from ~p~n", [App, Source]),
-            download_source(AppDir, Source)
+            download_source(AppDir, Source),
+            io_lib:format("Download ~p from ~p~n", [App, Source])
     end,
     ?ROOT ! Res.
 
