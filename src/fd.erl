@@ -6,6 +6,8 @@
 
 -include("rebar.hrl").
 -define(REBAR_CFG, "rebar.config").
+-define(ROOT, bfs_root).
+-define(TIMEOUT, 20000).
 
 main([Command]) ->
     {ok, Dir} = file:get_cwd(),
@@ -33,53 +35,69 @@ bfs(Path) ->
     end,
     Q = queue:from_list(DepsList),
     DepsFolder = filename:join(Path, DepsFldr),
-    case bfs_step(DepsFolder, Q, gb_sets:new()) of
+    erlang:register(?ROOT, self()),
+    case bfs_step(DepsFolder, Q, gb_sets:new(), DepsList) of
         ok ->
             ok;
         none ->
             none
     end.
 
-bfs_step(Dir, Queue, ViewedDeps) ->
+bfs_step(Dir, Queue, ViewedDeps, DownloadList) ->
+    lists:foreach(
+      fun({App, _VSN, Source}) ->
+              spawn(?MODULE, fun update_app/3, [Dir, App, Source])
+      end, DownloadList),
+    lists:foreach(
+      fun({_}) ->
+              receive
+                  {_, Res} ->
+                      io:format(Res)
+              after ?TIMEOUT ->
+                exit("Timeout when update dep")
+              end
+      end, DownloadList),
+
     case queue:out(Queue) of
-        {{value, {App, _Vsn, Source}}, Q} ->
-            AppDir = update_app(Dir, App, Source),
+        {{value, {App, _Vsn, _Source}}, Q} ->
+            AppDir = filename:join(Dir, App),
             ok = file:set_cwd(AppDir),
             Child = case file:consult(?REBAR_CFG) of
                 {ok,    Config} -> proplists:get_value(deps, Config, []);
                 {error, enoent} -> []
             end,
-            {NewQ, NewS} = lists:foldl(
-                     fun(Item = {Dep, _, _}, {AccQ, AccS}) ->
+            {NewQ, NewS, DownloadL} = lists:foldl(
+                     fun(Item = {Dep, _, _}, {AccQ, AccS, AccD}) ->
                              case gb_sets:is_member(Dep, AccS) of
                                  false ->
                                      {
                                       queue:in(Item, AccQ),
-                                      gb_sets:add(Dep, ViewedDeps)
+                                      gb_sets:add(Dep, ViewedDeps),
+                                      [Dep | AccD]
                                      };
                                  true ->
-                                     {AccQ, AccS}
+                                     {AccQ, AccS, AccD}
                              end;
-                        (Item, {AccQ, AccS}) ->
+                        (Item, {AccQ, AccS, AccD}) ->
                              ?WARN("Drop ~p~n", [Item]),
-                             {AccQ, AccS}
-                     end, {Q, ViewedDeps}, Child),
-            bfs_step(Dir, NewQ, NewS);
+                             {AccQ, AccS, AccD}
+                     end, {Q, ViewedDeps, []}, Child),
+            bfs_step(Dir, NewQ, NewS, DownloadL);
         {empty, _} ->
             none
     end.
 
 update_app(Dir, App, Source) ->
     AppDir = filename:join(Dir, App),
-    {ok, _} = case filelib:is_dir(AppDir) of
+    Res = case filelib:is_dir(AppDir) of
         true ->
-            io:format("Update ~p from ~p~n", [App, Source]),
+            io_lib:format("Update ~p from ~p~n", [App, Source]),
             update_source(AppDir, Source);
         false ->
-            io:format("Download ~p from ~p~n", [App, Source]),
+            io_lib:format("Download ~p from ~p~n", [App, Source]),
             download_source(AppDir, Source)
     end,
-    AppDir.
+    ?ROOT ! Res.
 
 update_source(AppDir, {git, Url}) ->
     update_source(AppDir, {git, Url, {branch, "HEAD"}});
