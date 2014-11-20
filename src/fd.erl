@@ -53,9 +53,9 @@ bfs_step(Dir, Queue, ViewedDeps, DownloadList) ->
       fun({_, _, _}) ->
               receive
                   {_, Res} ->
-                      io:format(Res)
-              after ?TIMEOUT ->
-                exit("Timeout when update dep")
+                      io:format(Res ++ "~n~n")
+              % after ?TIMEOUT ->
+              %   exit("Timeout when update dep")
               end;
          (_) -> nothing
       end, DownloadList),
@@ -106,16 +106,18 @@ update_source(AppDir, {git, Url}) ->
 update_source(AppDir, {git, Url, ""}) ->
     update_source(AppDir, {git, Url, {branch, "HEAD"}});
 update_source(AppDir, {git, _Url, {branch, Branch}}) ->
-    ShOpts = [{cd, AppDir}, {use_stdout, false}],
+    ShOpts = [{cd, AppDir}],
     rebar_utils:sh("git fetch origin", ShOpts),
     rebar_utils:sh(?FMT("git checkout -q ~s", [Branch]), ShOpts),
     rebar_utils:sh(?FMT("git pull --ff-only --no-rebase -q origin ~s", [Branch]),ShOpts);
 update_source(AppDir, {git, _Url, {tag, Tag}}) ->
-    ShOpts = [{cd, AppDir}, {use_stdout, false}],
+    % ShOpts = [{cd, AppDir}, {use_stdout, false}],
+    ShOpts = [{cd, AppDir}],
     rebar_utils:sh("git fetch origin", ShOpts),
     rebar_utils:sh(?FMT("git checkout -q ~s", [Tag]), ShOpts);
 update_source(AppDir, {git, _Url, Refspec}) ->
-    ShOpts = [{cd, AppDir}, {use_stdout, false}],
+    % ShOpts = [{cd, AppDir}, {use_stdout, false}],
+    ShOpts = [{cd, AppDir}],
     rebar_utils:sh("git fetch origin", ShOpts),
     rebar_utils:sh(?FMT("git checkout -q ~s", [Refspec]), ShOpts).
 
@@ -126,15 +128,15 @@ download_source(AppDir, {git, Url, ""}) ->
 download_source(AppDir, {git, Url, {branch, Branch}}) ->
     ok = filelib:ensure_dir(AppDir),
     rebar_utils:sh(?FMT("git clone -n ~s ~s", [Url, filename:basename(AppDir)]),
-                   [{cd, filename:dirname(AppDir)}, {use_stdout, false}]),
+                   [{cd, filename:dirname(AppDir)}]),
     rebar_utils:sh(?FMT("git checkout -q origin/~s", [Branch]), [{cd, AppDir}]);
 download_source(AppDir, {git, Url, {tag, Tag}}) ->
     ok = filelib:ensure_dir(AppDir),
     rebar_utils:sh(?FMT("git clone -n ~s ~s", [Url, filename:basename(AppDir)]),
-                   [{cd, filename:dirname(AppDir)}, {use_stdout, false}]),
+                   [{cd, filename:dirname(AppDir)}, {use_stdout, true}]),
     rebar_utils:sh(?FMT("git checkout -q ~s", [Tag]), [{cd, AppDir}]);
 download_source(AppDir, {git, Url, Rev}) ->
     ok = filelib:ensure_dir(AppDir),
     rebar_utils:sh(?FMT("git clone -n ~s ~s", [Url, filename:basename(AppDir)]),
-                   [{cd, filename:dirname(AppDir)}, {use_stdout, false}]),
+                   [{cd, filename:dirname(AppDir)}]),
     rebar_utils:sh(?FMT("git checkout -q ~s", [Rev]), [{cd, AppDir}]).
