@@ -1,7 +1,8 @@
 -module(fd).
 
 -export([
-         main/1
+         main/1,
+         update_app/3
         ]).
 
 -include("rebar.hrl").
@@ -45,17 +46,18 @@ bfs(Path) ->
 
 bfs_step(Dir, Queue, ViewedDeps, DownloadList) ->
     lists:foreach(
-      fun({App, _VSN, Source}) ->
-              spawn(?MODULE, fun update_app/3, [Dir, App, Source])
+      fun({App, _VSN, Source}) -> spawn(?MODULE, update_app, [Dir, App, Source]);
+         (Drop) -> ?ERROR("Drop ~p", [Drop])
       end, DownloadList),
     lists:foreach(
-      fun({_}) ->
+      fun({_, _, _}) ->
               receive
                   {_, Res} ->
                       io:format(Res)
               after ?TIMEOUT ->
                 exit("Timeout when update dep")
-              end
+              end;
+         (_) -> nothing
       end, DownloadList),
 
     case queue:out(Queue) of
@@ -73,7 +75,7 @@ bfs_step(Dir, Queue, ViewedDeps, DownloadList) ->
                                      {
                                       queue:in(Item, AccQ),
                                       gb_sets:add(Dep, ViewedDeps),
-                                      [Dep | AccD]
+                                      [Item | AccD]
                                      };
                                  true ->
                                      {AccQ, AccS, AccD}
@@ -104,16 +106,16 @@ update_source(AppDir, {git, Url}) ->
 update_source(AppDir, {git, Url, ""}) ->
     update_source(AppDir, {git, Url, {branch, "HEAD"}});
 update_source(AppDir, {git, _Url, {branch, Branch}}) ->
-    ShOpts = [{cd, AppDir}],
+    ShOpts = [{cd, AppDir}, {use_stdout, false}],
     rebar_utils:sh("git fetch origin", ShOpts),
     rebar_utils:sh(?FMT("git checkout -q ~s", [Branch]), ShOpts),
     rebar_utils:sh(?FMT("git pull --ff-only --no-rebase -q origin ~s", [Branch]),ShOpts);
 update_source(AppDir, {git, _Url, {tag, Tag}}) ->
-    ShOpts = [{cd, AppDir}],
+    ShOpts = [{cd, AppDir}, {use_stdout, false}],
     rebar_utils:sh("git fetch origin", ShOpts),
     rebar_utils:sh(?FMT("git checkout -q ~s", [Tag]), ShOpts);
 update_source(AppDir, {git, _Url, Refspec}) ->
-    ShOpts = [{cd, AppDir}],
+    ShOpts = [{cd, AppDir}, {use_stdout, false}],
     rebar_utils:sh("git fetch origin", ShOpts),
     rebar_utils:sh(?FMT("git checkout -q ~s", [Refspec]), ShOpts).
 
@@ -124,15 +126,15 @@ download_source(AppDir, {git, Url, ""}) ->
 download_source(AppDir, {git, Url, {branch, Branch}}) ->
     ok = filelib:ensure_dir(AppDir),
     rebar_utils:sh(?FMT("git clone -n ~s ~s", [Url, filename:basename(AppDir)]),
-                   [{cd, filename:dirname(AppDir)}]),
+                   [{cd, filename:dirname(AppDir)}, {use_stdout, false}]),
     rebar_utils:sh(?FMT("git checkout -q origin/~s", [Branch]), [{cd, AppDir}]);
 download_source(AppDir, {git, Url, {tag, Tag}}) ->
     ok = filelib:ensure_dir(AppDir),
     rebar_utils:sh(?FMT("git clone -n ~s ~s", [Url, filename:basename(AppDir)]),
-                   [{cd, filename:dirname(AppDir)}]),
+                   [{cd, filename:dirname(AppDir)}, {use_stdout, false}]),
     rebar_utils:sh(?FMT("git checkout -q ~s", [Tag]), [{cd, AppDir}]);
 download_source(AppDir, {git, Url, Rev}) ->
     ok = filelib:ensure_dir(AppDir),
     rebar_utils:sh(?FMT("git clone -n ~s ~s", [Url, filename:basename(AppDir)]),
-                   [{cd, filename:dirname(AppDir)}]),
+                   [{cd, filename:dirname(AppDir)}, {use_stdout, false}]),
     rebar_utils:sh(?FMT("git checkout -q ~s", [Rev]), [{cd, AppDir}]).
