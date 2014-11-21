@@ -34,7 +34,7 @@ bfs_step(Dir, Queue, ViewedDeps, DownloadList, Downloaded) ->
     NewDwled = lists:foldl(
       fun({App, _VSN, Source}, AccD) ->
               spawn(?MODULE, update_app, [Dir, App, Source]),
-              timer:sleep(30),
+              timer:sleep(60),
               gb_sets:add(App, AccD);
          (Drop, AccD) -> ?ERROR("Drop ~p", [Drop]), AccD
       end, Downloaded, DownloadList),
