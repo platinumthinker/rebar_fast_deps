@@ -15,3 +15,4 @@
 
 -define(REBAR_CFG, "rebar.config").
 -define(TIMEOUT, 200000).
+-define(RETRY, 10).

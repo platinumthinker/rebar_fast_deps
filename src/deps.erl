@@ -8,7 +8,9 @@
 
 -define(ROOT, bfs_root).
 -callback do(Dir :: string(), App :: atom(), _VSN, _Source) ->
-    nothing | {ok, _Output} | {error, _Reason}.
+    {nothing, App :: atom()} |
+    {ok, Output :: string()} |
+    {error, Reason :: string()}.
 
 -spec foreach(Dir :: string(), Module :: module()) -> ok | {error, _Reason}.
 foreach(Dir, Module) ->
@@ -47,12 +49,12 @@ bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList) ->
     lists:foreach(
       fun({_, _, _}) ->
               receive
-                  nothing ->
-                      nothing;
+                  {nothing, App} ->
+                      ?DEBUG("Nothing changes in ~p", [App]);
                   {ok, Output} ->
                       ?CONSOLE(Output, []);
-                  {error, Reason} ->
-                      ?ERROR(Reason, []),
+                  {error, App, Reason} ->
+                      ?ERROR("\e[1m\e[31m~p\e[0m: ~n~p", [App, Reason]),
                       exit("Error when deps update")
               after ?TIMEOUT ->
                 exit("Timeout when update dep")
