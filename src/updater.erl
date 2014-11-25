@@ -66,8 +66,8 @@ download_source(AppDir, {git, Url, Rev}) ->
 cmd(Dir, Str) ->
     cmd(Dir, Str, []).
 cmd(Dir, Str, Args) ->
-    Port = erlang:open_port({spawn, ?FMT(Str, Args)}, [{cd, Dir},
-                                    exit_status, use_stdio]),
+    Port = erlang:open_port({spawn, ?FMT(Str, Args)}, [{cd, Dir}, exit_status,
+                hide, stderr_to_stdout]),
     erlang:display({stat, cmd_loop(Port, [])}).
 cmd_loop(Port, Acc) ->
     receive
@@ -75,8 +75,13 @@ cmd_loop(Port, Acc) ->
             cmd_loop(Port, [Line ++ "\n" | Acc]);
         {Port, {data, {noeol, Line}}} ->
             cmd_loop(Port, [Line | Acc]);
+        {Port, {data, Line}} ->
+            cmd_loop(Port, [Line | Acc]);
         {Port, {exit_status, 0}} ->
             {ok, lists:flatten(lists:reverse(Acc))};
         {Port, {exit_status, Rc}} ->
-            {error, {Rc, lists:flatten(lists:reverse(Acc))}}
+            {error, {Rc, lists:flatten(lists:reverse(Acc))}};
+        {Port, Other} ->
+            io:format("~p: other ~p~n", [Port, Other]),
+            cmd_loop(Port, Acc)
     end.
