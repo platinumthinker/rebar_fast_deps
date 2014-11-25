@@ -114,7 +114,7 @@ sh_send(Command0, String, Options0) ->
     Command = patch_on_windows(Command0, proplists:get_value(env, Options, [])),
     PortSettings = proplists:get_all_values(port_settings, Options) ++
         [exit_status, {line, 16384}, use_stdio, stderr_to_stdout, hide],
-    Port = open_port({spawn, Command}, PortSettings),
+    Port = erlang:open_port({spawn, Command}, PortSettings),
 
     %% allow us to send some data to the shell command's STDIN
     %% Erlang doesn't let us get any reply after sending an EOF, though...

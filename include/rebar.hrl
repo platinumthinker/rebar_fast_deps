@@ -14,4 +14,4 @@
 -define(FMT(Str, Args), lists:flatten(io_lib:format(Str, Args))).
 
 -define(REBAR_CFG, "rebar.config").
--define(TIMEOUT, 20000).
+-define(TIMEOUT, 200000).

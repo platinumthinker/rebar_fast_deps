@@ -7,8 +7,8 @@
 -include("rebar.hrl").
 
 -define(ROOT, bfs_root).
--callback do(fun((Dir :: string(), App :: atom(), _VSN, _Source) ->
-    nothing | {ok, _Output} | {error, _Reason})) -> ok.
+-callback do(Dir :: string(), App :: atom(), _VSN, _Source) ->
+    nothing | {ok, _Output} | {error, _Reason}.
 
 -spec foreach(Dir :: string(), Module :: module()) -> ok | {error, _Reason}.
 foreach(Dir, Module) ->
@@ -52,7 +52,8 @@ bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList) ->
                   {ok, Output} ->
                       ?CONSOLE(Output, []);
                   {error, Reason} ->
-                      ?ERROR(Reason, [])
+                      ?ERROR(Reason, []),
+                      exit("Error when deps update")
               after ?TIMEOUT ->
                 exit("Timeout when update dep")
               end;
