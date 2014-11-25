@@ -12,3 +12,6 @@
 -define(ERROR(Str, Args), io:format(Str ++ "~n", Args)).
 
 -define(FMT(Str, Args), lists:flatten(io_lib:format(Str, Args))).
+
+-define(REBAR_CFG, "rebar.config").
+-define(TIMEOUT, 20000).
