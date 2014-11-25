@@ -20,12 +20,12 @@ do(Dir, App, _VSN, Source) ->
                 case update_source(AppDir, Source) of
                     [] -> {nothing, App};
                     _Line ->
-                        {ok, io_lib:format("Update \e[1m\e[32m~p\e[0m from ~200p",
+                        {ok, App, io_lib:format("Update \e[1m\e[32m~p\e[0m from ~200p",
                                            [App, Source])}
                 end;
             false ->
                 download_source(AppDir, Source),
-                {ok, io_lib:format("Download \e[1m\e[32m~p\e[0m from ~200p", [App, Source])}
+                {ok, App, io_lib:format("Download \e[1m\e[32m~p\e[0m from ~200p", [App, Source])}
         end
     catch
         _:{badmatch, {error, {_Code, Reason}}} ->
@@ -79,7 +79,7 @@ cmd(Dir, Str, Args) ->
     cmd(Dir, Str, Args, 0).
 cmd(Dir, Str, Args, Retry) ->
     Port = erlang:open_port({spawn, ?FMT(Str, Args)}, [{cd, Dir}, exit_status,
-                hide, stderr_to_stdout]),
+                {line, 6558}, hide, stderr_to_stdout]),
     case cmd_loop(Port, []) of
         {ok, Output} -> {ok, Output};
         {error, Reason} ->
@@ -92,7 +92,7 @@ cmd(Dir, Str, Args, Retry) ->
 cmd_loop(Port, Acc) ->
     receive
         {Port, {data, {eol, Line}}} ->
-            cmd_loop(Port, [Line ++ "~n" | Acc]);
+            cmd_loop(Port, [Line ++ "\n" | Acc]);
         {Port, {data, {noeol, Line}}} ->
             cmd_loop(Port, [Line | Acc]);
         {Port, {data, Line}} ->
@@ -100,12 +100,9 @@ cmd_loop(Port, Acc) ->
         {Port, {exit_status, 0}} ->
             {ok, replace_eol(lists:flatten(lists:reverse(Acc)))};
         {Port, {exit_status, Rc}} ->
-            {error, {Rc, replace_eol(lists:flatten(lists:reverse(Acc)))}};
-        {Port, Other} ->
-            ?WARN("~p: other ~p~n", [Port, Other]),
-            cmd_loop(Port, Acc)
+            {error, {Rc, replace_eol(lists:flatten(lists:reverse(Acc)))}}
     end.
 
 replace_eol(Line) ->
-    ReFlags = [unicode, global, bsr_unicode],
+    ReFlags = [global, bsr_unicode],
     [ binary_to_list(L) || L <- re:replace(Line, "\\R", "", ReFlags), L =/= [] ].

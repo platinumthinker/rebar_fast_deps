@@ -10,7 +10,7 @@ main([Command]) ->
     {ok, Dir} = file:get_cwd(),
     main([Command, Dir]);
 main([A, WD]) when A == "update"; A == "up" ->
-    updater:update_all(WD);
+    updater:update_all([WD]);
 main(["help", _]) ->
     io:format("Usage: fd <command> [path] (fast deps)~n"
               "Commands:"
