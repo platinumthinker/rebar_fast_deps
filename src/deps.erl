@@ -38,6 +38,7 @@ bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList) ->
       fun(A = {App, VSN, Source}, Acc) ->
               spawn(
                 fun() ->
+                        timer:sleep(300),
                         ?ROOT ! Module:do(Dir, App, VSN, Source)
                 end),
               [A | Acc];
