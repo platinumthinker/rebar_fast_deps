@@ -2,15 +2,16 @@
 -behaviour(deps).
 
 -export([
-         update_all/1,
-         do/4
+         update_all/2,
+         do/4,
+         cmd/3
         ]).
 
 -include("rebar.hrl").
 
--spec update_all(Dir :: string()) -> ok | error.
-update_all(Dir) ->
-    deps:foreach(Dir, ?MODULE).
+-spec update_all(Dir :: string(), RebarCfg :: string()) -> ok | error.
+update_all(Dir, RebarCfg) ->
+    deps:foreach(Dir, ?MODULE, ok, RebarCfg).
 
 do(Dir, App, _VSN, Source) ->
     AppDir = filename:join(Dir, App),
@@ -25,7 +26,8 @@ do(Dir, App, _VSN, Source) ->
                 end;
             false ->
                 download_source(AppDir, Source),
-                {ok, App, io_lib:format("Download \e[1m\e[32m~p\e[0m from ~200p", [App, Source])}
+                {ok, App, io_lib:format("Download \e[1m\e[32m~p\e[0m from ~200p",
+                                        [App, Source])}
         end
     catch
         _:{badmatch, {error, {_Code, Reason}}} ->

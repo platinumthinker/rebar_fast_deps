@@ -1,7 +1,9 @@
 -module(deps).
 
 -export([
-         foreach/2
+         foreach/3,
+         foreach/4,
+         foreach/5
         ]).
 
 -include("rebar.hrl").
@@ -12,33 +14,39 @@
     {ok, App :: atom(), Output :: string()} |
     {error, App :: atom(), Reason :: string()}.
 
--spec foreach(Dir :: string(), Module :: module()) -> ok | {error, _Reason}.
-foreach(Dir, Module) ->
+-spec foreach(Dir :: string(), Module :: module(), _Acc) -> {ok, _Res} | {error, _Reason}.
+foreach(Dir, Module, Acc) ->
+    foreach(Dir, Module, Acc, false, ?REBAR_CFG).
+foreach(Dir, Module, Acc, RebarCfg) ->
+    foreach(Dir, Module, Acc, false, RebarCfg).
+
+foreach(Dir, Module, Acc, Delay, RebarCfg) ->
     ok = file:set_cwd(Dir),
-    {DepsFldr, DepsList} = case file:consult(?REBAR_CFG) of
+    {DepsFldr, DepsList} = case file:consult(RebarCfg) of
         {ok, Config} ->
             {
              proplists:get_value(deps_dir, Config, "deps"),
              proplists:get_value(deps, Config, [])
             };
-        {error, enoent} -> {[], "deps"}
+        {error, enoent} -> {"deps", []}
     end,
-    Q = queue:from_list(DepsList),
     DepsFolder = filename:join(Dir, DepsFldr),
-    erlang:register(?ROOT, self()),
-    case bfs_step(Module, DepsFolder, Q, gb_sets:new(), DepsList, gb_sets:new()) of
-        ok ->
-            ok;
-        none ->
-            none
-    end.
+    bfs_step(Module, DepsFolder, DepsList, Acc, Delay).
 
-bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList) ->
+-spec bfs_step(Module :: module(), Dir :: string(),
+               DownloadList :: list({_, _, _} | {_, _}),
+               _AccResult, Delay :: boolean()) -> {ok, list()} | none.
+bfs_step(Module, Dir, DepsList, AccResult, Delay) ->
+    Q = queue:from_list(DepsList),
+    erlang:register(?ROOT, self()),
+    bfs_step(Module, Dir, Q, gb_sets:new(), [], gb_sets:new(), AccResult, Delay).
+
+bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList, AccResult, Delay) ->
     CorrectDownList = lists:reverse(lists:foldl(
       fun(A = {App, VSN, Source}, Acc) ->
               spawn(
                 fun() ->
-                        timer:sleep(300),
+                        Delay andalso timer:sleep(300),
                         ?ROOT ! Module:do(Dir, App, VSN, Source)
                 end),
               [A | Acc];
@@ -47,26 +55,31 @@ bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList) ->
               Acc
       end, [], DownloadList)),
 
-    DownL = lists:foldl(
-      fun({_, _, _}, Acc) ->
+    {DownL, NewAccResult} = lists:foldl(
+      fun({_, _, _}, {Acc, AccRes}) ->
               receive
                   {nothing, App} ->
-                      gb_sets:add(App, Acc);
+                      {gb_sets:add(App, Acc), AccRes};
                   {ok, App, Output} ->
                       ?CONSOLE(Output, []),
-                      gb_sets:add(App, Acc);
+                      {gb_sets:add(App, Acc), AccRes};
+                  {accum, App, Result} ->
+                      {
+                       gb_sets:add(App, Acc),
+                       [Result | AccRes]
+                      };
                   {error, App, Reason} ->
                       ?ERROR("\e[1m\e[31m~p\e[0m: ~n~p", [App, Reason]),
                       exit("Error when deps update")
               after ?TIMEOUT ->
-                exit("Timeout when update dep")
+                    exit("Timeout when update dep")
               end;
          (_, Acc) -> Acc
-      end, DownloadedList, CorrectDownList),
+      end, {DownloadedList, AccResult}, CorrectDownList),
 
     Size1 = gb_sets:size(DownL),
     Size2 = gb_sets:size(DownloadedList),
-    Size1 - 5 > Size2 andalso ?CONSOLE("Prepare ~p deps", [Size1]),
+    (Size1 - 5 > Size2) andalso Delay andalso ?CONSOLE("Prepare ~p deps", [Size1]),
 
     case queue:out(Queue) of
         {{value, {App, _Vsn, _Source}}, Q} ->
@@ -81,7 +94,7 @@ bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList) ->
                                  false ->
                                      {
                                       queue:in(Item, AccQ),
-                                      gb_sets:add(Dep, ViewedDeps),
+                                      gb_sets:add(Dep, AccS),
                                       [Item | AccD]
                                      };
                                  true ->
@@ -91,7 +104,8 @@ bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList) ->
                              ?WARN("Drop ~p", [Item]),
                              {AccQ, AccS, AccD}
                      end, {Q, ViewedDeps, []}, Child),
-            bfs_step(Module, Dir, NewQ, NewS, DownloadL, DownL);
+            bfs_step(Module, Dir, NewQ, NewS, DownloadL, DownL,
+                     NewAccResult, Delay);
         {empty, _} ->
-            none
+            {ok, NewAccResult}
     end.
