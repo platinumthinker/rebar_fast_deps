@@ -12,7 +12,7 @@ main([Command]) ->
 main([A, WD]) when A == "update"; A == "up" ->
     updater:update_all([WD], ?REBAR_CFG);
 main([A, WD]) when A == "status"; A == "st" ->
-    status:status([WD]);
+    checker:checker([WD]);
 main([A, WD]) when A == "load"; A == "lo" ->
     updater:update_all([WD], ?REBAR_SAVE_CFG);
 main([A, WD]) when A == "save"; A == "sa" ->

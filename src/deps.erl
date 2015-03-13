@@ -38,7 +38,12 @@ foreach(Dir, Module, Acc, Delay, RebarCfg) ->
                _AccResult, Delay :: boolean()) -> {ok, list()} | none.
 bfs_step(Module, Dir, DepsList, AccResult, Delay) ->
     Q = queue:from_list(DepsList),
-    erlang:register(?ROOT, self()),
+    case lists:member(?ROOT, erlang:registered()) of
+        true ->
+            none;
+        false ->
+            true = erlang:register(?ROOT, self())
+    end,
     bfs_step(Module, Dir, Q, gb_sets:new(), [], gb_sets:new(), AccResult, Delay).
 
 bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList, AccResult, Delay) ->
