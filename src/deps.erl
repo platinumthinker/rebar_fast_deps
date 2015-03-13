@@ -71,7 +71,7 @@ bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList, AccResult
                   {accum, App, Result} ->
                       {
                        gb_sets:add(App, Acc),
-                       [Result | AccRes]
+                       lists:flatten([Result | AccRes])
                       };
                   {error, App, Reason} ->
                       ?ERROR("\e[1m\e[31m~p\e[0m: ~n~p", [App, Reason]),
