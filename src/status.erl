@@ -26,6 +26,10 @@ do(Dir, App, _VSN, _Source) ->
             end,
             ColorOut = string:concat("\e[1m\e[32m~p\e[0m:~n", Format),
             {ok, App, io_lib:format(ColorOut, [App | Res])};
+        {error, {1, []}} ->
+            {ok, App, io_lib:format("\e[1m\e[31m~p\e[0m:~nDon't find in ~p",
+                                    [App, AppDir])};
         {error, Reason} ->
-            ?CONSOLE("~p: ~p -> ~p ~n", [App, Dir, Reason])
+            {ok, App, io_lib:format("\e[1m\e[31mError in ~p\e[0m:~n~p",
+                                    [App, Reason])}
     end.
