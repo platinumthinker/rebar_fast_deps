@@ -11,26 +11,35 @@
 -spec show(Dir :: string()) -> ok | error.
 show(Dir) ->
     {ok, Deps} = deps:foreach(Dir, ?MODULE, []),
-    {FilteredDeps, MaxNum} = lists:foldl(
-        fun({App, _, _, _, _} = Val, {Acc, MAcc}) ->
+    {FilteredDeps, MaxNum, MaxNum2} = lists:foldl(
+        fun({App, B, C, Author, D}, {Acc, MAcc, MAcc2}) ->
+                AppStr = erlang:atom_to_list(App),
                 {
-                 [Val | Acc],
-                 erlang:max(erlang:length(erlang:atom_to_list(App)), MAcc)
+                 [ {AppStr, B, C, Author, D} | Acc],
+                 erlang:max(erlang:length(Author), MAcc),
+                 erlang:max(erlang:length(AppStr), MAcc2)
                 };
            (_, Acc) -> Acc
-        end, {[], 0}, Deps),
+        end, {[], 0, 0}, Deps),
     Comparator = fun({_, A, _, _, _}, {_, B, _, _, _}) -> A > B end,
     SortList = lists:sort(Comparator, FilteredDeps),
 
-    Format = "~p: ~s ~s ~s",
+    Format = "~s \e[34m~s\e[0m ~s ~ts\e[32m~s\e[0m~s ~ts~.120ts~s",
+    Delim = "\e[33m● \e[0m",
     lists:foreach(fun({App, _, Hash, Author, Msg}) ->
-        ?CONSOLE(Format, [App, Hash, Author, Msg])
-    end, SortList),
-    ?CONSOLE("From date:~p", [last_month()]).
+        Spaces = string:copies(" ", MaxNum - length(Author)),
+        Spaces2 = string:copies(" ", MaxNum2 - length(App)),
+        End = case length(Msg) > 120 of
+            true -> "...";
+            false -> ""
+        end,
+        ?CONSOLE(Format, [Hash, Author, Spaces, Delim, App, Spaces2, Delim, Msg,
+                         End])
+    end, SortList).
 
 do(Dir, App, _VSN, _Source) ->
     AppDir = filename:join(Dir, App),
-    Cmd = "git --no-pager log --quiet --pretty=format:'%at|||%h|||%an|||%s%n' --after='~p'",
+    Cmd = "git --no-pager log --quiet --pretty=tformat:'%at|||%h|||%an|||%s' --after='~p'",
     {ok, Res} = updater:cmd(AppDir, Cmd, [last_month()]),
     case Res of
         [] ->
@@ -52,7 +61,7 @@ do(Dir, App, _VSN, _Source) ->
 
 last_month() ->
     {{Y, M, D}, _} = calendar:local_time(),
-    case D - 14 of
+    case D - 16 of
         NewD when NewD > 0 ->
             {Y, M, NewD};
         NewD ->
