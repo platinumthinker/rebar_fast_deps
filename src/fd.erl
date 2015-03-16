@@ -9,6 +9,8 @@
 main([Command]) ->
     {ok, Dir} = file:get_cwd(),
     main([Dir, Command]);
+main([WD, A]) when A == "push"; A == "ps" ->
+    push:all([WD]);
 main([WD, A]) when A == "update"; A == "up" ->
     updater:update_all([WD], ?REBAR_CFG);
 main([WD, A]) when A == "status"; A == "st" ->
@@ -46,8 +48,9 @@ main(["help", _]) ->
               "  save   (sa) - For create rebar.config.save with deps on current state~n"
               "  load   (ld) - For load state from rebar.config.save~n"
               "  log    (lg) - Show deps log~n"
-              "  branch (br) - list releases branches ~n"
-              "  br release_2_14 --ignore folsom lagger - create branch without ignores app~n"
+              "  branch (br) - List releases branches ~n"
+              "  br release_2_14 --ignore folsom lagger - Create branch without ignores app~n"
+              "  push   (ps) - For all modificate push~n"
               "  tag    (tg) - list tags~n"
               "  tag 0.0.0.1 --ignore folsom lagger - create tag 0.0.0.1 without ignores app~n");
 main(Args) ->

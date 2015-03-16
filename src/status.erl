@@ -24,12 +24,12 @@ do(Dir, App, _VSN, _Source) ->
                 Len ->
                     string:copies("~s", Len)
             end,
-            ColorOut = string:concat("\e[1m\e[32m~p\e[0m:~n", Format),
+            ColorOut = string:concat("\e[32m~p\e[0m:~n", Format),
             {ok, App, io_lib:format(ColorOut, [App | Res])};
         {error, {1, []}} ->
-            {ok, App, io_lib:format("\e[1m\e[31m~p\e[0m:~nDon't find in ~p",
+            {ok, App, io_lib:format("\e[31m~p\e[0m:~nDon't find in ~p",
                                     [App, AppDir])};
         {error, Reason} ->
-            {ok, App, io_lib:format("\e[1m\e[31mError in ~p\e[0m:~n~p",
+            {ok, App, io_lib:format("\e[31mError in ~p\e[0m:~n~p",
                                     [App, Reason])}
     end.
