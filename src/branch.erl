@@ -11,35 +11,45 @@
 
 print(Dir) ->
     {ok, Res} = deps:foreach(Dir, ?MODULE, []),
-    UniqRes = lists:foldl(fun({_, _, Val, _}, Acc) ->
+    UniqRes = lists:foldl(fun({_, _, Val, _, _}, Acc) ->
         lists:umerge(Val, Acc)
     end, [], Res),
     lists:foreach(fun(Val) ->
-        ?CONSOLE("~s", [Val])
-    end, UniqRes).
+        case re:run(Val, "(.*)detached(.*)") of
+            nomatch -> ?CONSOLE("~s", [Val]);
+            _       -> none
+        end
+    end, lists:usort(UniqRes)).
 
 create(Dir, Branch, IgnoredApp) ->
     {ok, Res1} = deps:foreach(Dir, ?MODULE, []),
     Res = lists:usort(Res1),
-    Hashs = lists:foldl(fun({App, _, _, Hash, _}, Acc) ->
-        [{App, Hash} | Acc]
-    end, [], Res),
-    lists:foreach(
-      fun({App, AppDir, _, _, false}) ->
-              case lists:member(App, IgnoredApp) of
-                  true -> ok;
-                  false -> cfg_modifier(AppDir, Branch, Hashs)
-              end;
-         (_) ->
-              none
-    end, Res),
-    cfg_modifier(Dir, Branch, Hashs),
+    {Hashs, Branches} = lists:foldl(fun({App, Branch1, _, Hash, _}, {Acc, Acc2}) ->
+        {[{App, Hash} | Acc], [{App, Branch1} | Acc2]}
+    end, {[], []}, Res),
+    ?CONSOLE("~p ", [Branches]),
+    % lists:foreach(
+    %   fun({App, AppDir, _, _, false}) ->
+    %           case lists:member(App, IgnoredApp) of
+    %               true -> ok;
+    %               % false -> cfg_modifier(AppDir, Branch, Hashs)
+    %           end;
+    %      (_) ->
+    %           none
+    % end, Res),
+    % cfg_modifier(Dir, Branch, Hashs),
     ok.
 
 
-cfg_modifier(AppDir, Branch, Hashs) ->
-    Cmd = "git checkout -b ~s",
-    {ok, _} = updater:cmd(AppDir, Cmd, [Branch]),
+cfg_modifier(AppDir, Branch, Hashs, Branches) ->
+    case lists:member(Branch, Branches) of
+        false ->
+            Cmd = "git checkout -b ~s",
+            {ok, _} = updater:cmd(AppDir, Cmd, [Branch]);
+        true ->
+            ?CONSOLE("Ignoring \e[31m~p\e[0m: already exist ~p", [AppDir, Branches])
+    end,
+
     Name = filename:join(AppDir, ?REBAR_CFG),
     case file:consult(Name) of
         {ok, Conf} ->
@@ -87,11 +97,15 @@ deps_modifier(Dep, {Acc, Branch}, _Hash) ->
 
 do(Dir, App, _VSN, _Source) ->
     AppDir = filename:join(Dir, App),
-    Cmd = "git --no-pager branch -r --list '*release_*'",
+    Cmd = "git --no-pager branch --all",
     Cmd2 = "git --no-pager log -1 --oneline --pretty=tformat:'%h'",
     Cmd3 = "git config --get remote.origin.url",
     {ok, Hash} = updater:cmd(AppDir, Cmd2, []),
     {ok, Url} = updater:cmd(AppDir, Cmd3, []),
     External = re:run(Url, "(.*):external(.*)") /= nomatch,
-    {ok, Res} = updater:cmd(AppDir, Cmd, []),
+    {ok, Res1} = updater:cmd(AppDir, Cmd, []),
+    Res = lists:foldl(
+      fun(Val, Acc) ->
+              [string:sub_string(Val, 3) | Acc]
+      end, [], Res1),
     {accum, App, {erlang:atom_to_list(App), AppDir, Res, Hash, External}}.
