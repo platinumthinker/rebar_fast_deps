@@ -8,16 +8,16 @@
 
 main([Command]) ->
     {ok, Dir} = file:get_cwd(),
-    main([Command, Dir]);
-main([A, WD]) when A == "update"; A == "up" ->
+    main([Dir, Command]);
+main([WD, A]) when A == "update"; A == "up" ->
     updater:update_all([WD], ?REBAR_CFG);
-main([A, WD]) when A == "status"; A == "st" ->
+main([WD, A]) when A == "status"; A == "st" ->
     checker:checker([WD]);
-main([A, WD]) when A == "log"; A == "lg" ->
+main([WD, A]) when A == "log"; A == "lg" ->
     log:show([WD]);
-main([A, WD]) when A == "load"; A == "ld" ->
+main([WD, A]) when A == "load"; A == "ld" ->
     updater:update_all([WD], ?REBAR_SAVE_CFG);
-main([A, WD]) when A == "save"; A == "sa" ->
+main([WD, A]) when A == "save"; A == "sa" ->
     save:save_all([WD]);
 main([A | Args]) when A == "tag"; A == "tg"; A == "branch"; A == "br" ->
     {ok, Dir} = file:get_cwd(),
@@ -52,4 +52,4 @@ main(["help", _]) ->
               "  tag 0.0.0.1 --ignore folsom lagger - create tag 0.0.0.1 without ignores app~n");
 main(Args) ->
     io:format("Command ~p not recognized.~n", [Args]),
-    main(["help"]).
+    main(["help", aa]).
