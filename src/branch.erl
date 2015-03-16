@@ -66,7 +66,7 @@ change_deps(Deps, Conf, Name, Branch, AppDir) ->
   [ io:fwrite(F, "~p.~n", [Item]) || Item <- NewConf ],
   io:fwrite(F, "~s", ["\n"]),
   file:close(F),
-  Cmd1 = "git commit -am 'Create release branches ~s' && git push origin ~s",
+  Cmd1 = "git commit -am 'Create release branches ~s'",
   updater:cmd(AppDir, Cmd1, [Branch]).
 
 deps_modifier({App, VSN, {git, Url}}, Acc, Hash) ->
