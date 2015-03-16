@@ -26,46 +26,48 @@ create(Dir, Branch, IgnoredApp) ->
     end, [], Res),
     lists:foreach(
       fun({App, AppDir, _, _, false}) ->
-              cfg_modifier(App, AppDir, IgnoredApp, Branch, Hashs);
+              case lists:member(App, IgnoredApp) of
+                  true -> ok;
+                  false -> cfg_modifier(AppDir, Branch, Hashs)
+              end;
          (_) ->
               none
     end, Res),
-    cfg_modifier("", Dir, IgnoredApp, Branch, Hashs),
+    cfg_modifier(Dir, Branch, Hashs),
     ok.
 
 
-cfg_modifier(App, AppDir, IgnoredApp, Branch, Hashs) ->
+cfg_modifier(AppDir, Branch, Hashs) ->
     Cmd = "git checkout -b ~s",
-    case lists:member(App, IgnoredApp) of
-        true -> ok;
-        false ->
-            {ok, _} = updater:cmd(AppDir, Cmd, [Branch]),
-            Name = filename:join(AppDir, ?REBAR_CFG),
-            case file:consult(Name) of
-                {ok, Conf} ->
-                    Deps = proplists:get_value(deps, Conf, []),
-                    case lists:foldl(
-                           fun (Val, Acc) ->
-                                   AppStr = atom_to_list(element(1, Val)),
-                                   Hash = proplists:get_value(AppStr, Hashs),
-                                   deps_modifier(Val, Acc, Hash)
-                           end, {[], Branch}, lists:sort(Deps)) of
-                        {[], _} ->
-                            none;
-                        {NewDeps1, _} ->
-                            NewDeps = lists:reverse(NewDeps1),
-                            NewConf = lists:keyreplace(deps, 1, Conf, {deps, NewDeps}),
-                            {ok, F} = file:open(Name, [write]),
-                            io:fwrite(F, "~s ~s ~s~n~n",
-                                      ["%% THIS FILE IS GENERATED FOR", Branch, "%%"]),
-                            [ io:fwrite(F, "~p.~n", [Item]) || Item <- NewConf ],
-                            io:fwrite(F, "~s", ["\n"]),
-                            file:close(F)
-                    end;
-                {error, enoent} ->
-                    none
-            end
+    {ok, _} = updater:cmd(AppDir, Cmd, [Branch]),
+    Name = filename:join(AppDir, ?REBAR_CFG),
+    case file:consult(Name) of
+        {ok, Conf} ->
+            Deps = proplists:get_value(deps, Conf, []),
+            {Res, _} = lists:foldl(
+                    fun (Val, Acc) ->
+                            AppStr = atom_to_list(element(1, Val)),
+                            Hash = proplists:get_value(AppStr, Hashs),
+                            deps_modifier(Val, Acc, Hash)
+                    end, {[], Branch}, lists:sort(Deps)),
+            change_deps(Res, Conf, Name, Branch, AppDir);
+        {error, enoent} ->
+            none
     end.
+
+change_deps([], _Conf, _Name, _Branch, _AppDir) ->
+    none;
+change_deps(Deps, Conf, Name, Branch, AppDir) ->
+  NewDeps = lists:reverse(Deps),
+  NewConf = lists:keyreplace(deps, 1, Conf, {deps, NewDeps}),
+  {ok, F} = file:open(Name, [write]),
+  io:fwrite(F, "~s ~s ~s~n~n",
+            ["%% THIS FILE IS GENERATED FOR", Branch, "%%"]),
+  [ io:fwrite(F, "~p.~n", [Item]) || Item <- NewConf ],
+  io:fwrite(F, "~s", ["\n"]),
+  file:close(F),
+  Cmd1 = "git commit -am 'Create release branches ~s' && git push origin ~s",
+  updater:cmd(AppDir, Cmd1, [Branch]).
 
 deps_modifier({App, VSN, {git, Url}}, Acc, Hash) ->
     deps_modifier({App, VSN, {git, Url, {branch, "HEAD"}}}, Acc, Hash);
