@@ -68,6 +68,11 @@ bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList, AccResult
                   {ok, App, Output} ->
                       ?CONSOLE(Output, []),
                       {gb_sets:add(App, Acc), AccRes};
+                  {accum, App, Result} when not is_list(AccRes) ->
+                      {
+                       gb_sets:add(App, Acc),
+                       Result
+                      };
                   {accum, App, Result} ->
                       {
                        gb_sets:add(App, Acc),

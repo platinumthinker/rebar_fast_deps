@@ -16,7 +16,7 @@ checker(Dir) ->
     Dirs = filelib:wildcard(filename:join([Dir, DepsFldr, "*"])),
     lists:foreach(
       fun(Val) ->
-              case filelib:is_dir(Val) andalso not lists:member(Val, Deps) of
+              case filelib:is_dir(Val) andalso not lists:member({Val}, Deps) of
                   true ->
                       ?CONSOLE("\e[1m\e[33m~s\e[0m:~nUnused dir ~p",
                                [filename:basename(Val), Val]);
@@ -27,4 +27,4 @@ checker(Dir) ->
 
 do(Dir, App, _VSN, _Source) ->
     AppDir = filename:join(Dir, App),
-    {accum, App, AppDir}.
+    {accum, App, {AppDir}}.
