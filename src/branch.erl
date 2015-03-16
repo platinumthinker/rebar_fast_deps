@@ -24,32 +24,28 @@ print(Dir) ->
 create(Dir, Branch, IgnoredApp) ->
     {ok, Res1} = deps:foreach(Dir, ?MODULE, []),
     Res = lists:usort(Res1),
-    {Hashs, Branches} = lists:foldl(fun({App, Branch1, _, Hash, _}, {Acc, Acc2}) ->
+    {Hashs, Branches} = lists:foldl(fun({App, _, Branch1, Hash, _}, {Acc, Acc2}) ->
         {[{App, Hash} | Acc], [{App, Branch1} | Acc2]}
     end, {[], []}, Res),
-    ?CONSOLE("~p ", [Branches]),
-    % lists:foreach(
-    %   fun({App, AppDir, _, _, false}) ->
-    %           case lists:member(App, IgnoredApp) of
-    %               true -> ok;
-    %               % false -> cfg_modifier(AppDir, Branch, Hashs)
-    %           end;
-    %      (_) ->
-    %           none
-    % end, Res),
-    % cfg_modifier(Dir, Branch, Hashs),
+    lists:foreach(
+      fun({App, AppDir, _, _, false}) ->
+              Br = proplists:get_value(App, Branches),
+              case lists:member(App, IgnoredApp) orelse lists:member(Branch, Br) of
+                  true ->
+                      ?CONSOLE("Ignoring \e[31m~s\e[0m: already exist ~p",
+                               [App, Branch]);
+                  false -> cfg_modifier(AppDir, Branch, Hashs)
+              end;
+         (_) ->
+              none
+    end, Res),
+    cfg_modifier(Dir, Branch, Hashs),
     ok.
 
 
-cfg_modifier(AppDir, Branch, Hashs, Branches) ->
-    case lists:member(Branch, Branches) of
-        false ->
-            Cmd = "git checkout -b ~s",
-            {ok, _} = updater:cmd(AppDir, Cmd, [Branch]);
-        true ->
-            ?CONSOLE("Ignoring \e[31m~p\e[0m: already exist ~p", [AppDir, Branches])
-    end,
-
+cfg_modifier(AppDir, Branch, Hashs) ->
+    Cmd = "git checkout -b ~s",
+    updater:cmd(AppDir, Cmd, [Branch]),
     Name = filename:join(AppDir, ?REBAR_CFG),
     case file:consult(Name) of
         {ok, Conf} ->
