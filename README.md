@@ -2,6 +2,7 @@
 > make
 
 # Usage:
+```
  fd help
  fd update (up) - For update rebar deps
  fd status (st) - Get status rebar deps
@@ -12,3 +13,4 @@
  fd br release_2_14 --ignore folsom lagger - create branch without ignores app
  fd tag    (tg) - list tags
  fd tag 0.0.0.1 --ignore folsom lagger - create tag 0.0.0.1 without ignores app
+```
