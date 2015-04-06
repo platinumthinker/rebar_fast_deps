@@ -35,9 +35,9 @@ do(Dir, App, _VSN, Source) ->
     end.
 
 update_source(AppDir, {git, Url}) ->
-    update_source(AppDir, {git, Url, {branch, "HEAD"}});
+    update_source(AppDir, {git, Url, {branch, "master"}});
 update_source(AppDir, {git, Url, ""}) ->
-    update_source(AppDir, {git, Url, {branch, "HEAD"}});
+    update_source(AppDir, {git, Url, {branch, "master"}});
 update_source(AppDir, {git, _Url, {branch, Branch}}) ->
     {ok, Line} = cmd(AppDir, "git fetch origin"),
     cmd(AppDir, "git checkout -q ~s", [Branch]),
@@ -53,9 +53,9 @@ update_source(AppDir, {git, _Url, Refspec}) ->
     Line.
 
 download_source(AppDir, {git, Url}) ->
-    download_source(AppDir, {git, Url, {branch, "HEAD"}});
+    download_source(AppDir, {git, Url, {branch, "master"}});
 download_source(AppDir, {git, Url, ""}) ->
-    download_source(AppDir, {git, Url, {branch, "HEAD"}});
+    download_source(AppDir, {git, Url, {branch, "master"}});
 download_source(AppDir, {git, Url, {branch, Branch}}) ->
     ok = filelib:ensure_dir(AppDir),
     Dir = filename:dirname(AppDir),

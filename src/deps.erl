@@ -49,11 +49,12 @@ bfs_step(Module, Dir, DepsList, AccResult, Delay) ->
 bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList, AccResult, Delay) ->
     CorrectDownList = lists:reverse(lists:foldl(
       fun(A = {App, VSN, Source}, Acc) ->
-              spawn(
-                fun() ->
+              % spawn(
+                % fun() ->
                         Delay andalso timer:sleep(300),
-                        ?ROOT ! Module:do(Dir, App, VSN, Source)
-                end),
+                        io:format("App ~p~n", [A]),
+                        ?ROOT ! Module:do(Dir, App, VSN, Source),
+                % end),
               [A | Acc];
          (Drop, Acc) ->
               ?WARN("Drop ~p", [Drop]),
