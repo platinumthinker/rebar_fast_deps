@@ -34,10 +34,19 @@ foreach(Dir, Module, Acc, Delay, RebarCfg) ->
     bfs_step(Module, DepsFolder, DepsList, Acc, Delay).
 
 -spec bfs_step(Module :: module(), Dir :: string(),
-               DownloadList :: list({_, _, _} | {_, _}),
+               DownloadList :: list({_, _, _, _} | {_, _, _} | {_, _}),
                _AccResult, Delay :: boolean()) -> {ok, list()} | none.
 bfs_step(Module, Dir, DepsList, AccResult, Delay) ->
-    Q = queue:from_list(DepsList),
+    Q = lists:foldl(
+      fun({App, VSN, Source, [raw]}, Acc) ->
+              queue:in({App, VSN, Source}, Acc);
+         (A = {_, _, _}, Acc) ->
+              queue:in(A, Acc);
+         (Drop, Acc) ->
+              ?WARN("Drop ~p", [Drop]),
+              Acc
+      end, queue:new(), DepsList),
+
     case lists:member(?ROOT, erlang:registered()) of
         true ->
             none;
@@ -55,6 +64,13 @@ bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList, AccResult
                         ?ROOT ! Module:do(Dir, App, VSN, Source)
                  end),
               [A | Acc];
+         ({App, VSN, Source, [raw]}, Acc) ->
+               spawn(
+                 fun() ->
+                        Delay andalso timer:sleep(300),
+                        ?ROOT ! Module:do(Dir, App, VSN, Source)
+                 end),
+              [{App, VSN, Source} | Acc];
          (Drop, Acc) ->
               ?WARN("Drop ~p", [Drop]),
               Acc
@@ -100,6 +116,18 @@ bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList, AccResult
             end,
             {NewQ, NewS, DownloadL} = lists:foldl(
                      fun(Item = {Dep, _, _}, {AccQ, AccS, AccD}) ->
+                             case gb_sets:is_member(Dep, AccS) of
+                                 false ->
+                                     {
+                                      queue:in(Item, AccQ),
+                                      gb_sets:add(Dep, AccS),
+                                      [Item | AccD]
+                                     };
+                                 true ->
+                                     {AccQ, AccS, AccD}
+                             end;
+                        ({Dep, A, V, [raw]}, {AccQ, AccS, AccD}) ->
+                             Item = {Dep, A, V},
                              case gb_sets:is_member(Dep, AccS) of
                                  false ->
                                      {
