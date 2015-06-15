@@ -41,9 +41,27 @@ do(Dir, App, _VSN, _Source) ->
     AppDir = filename:join(Dir, App),
     Cmd = "git --no-pager log --quiet --pretty=tformat:'%at|||%h|||%an|||%s' --after='~p'",
     {ok, Res} = updater:cmd(AppDir, Cmd, [last_month()]),
+
     case Res of
         [] ->
-            {accum, App, App};
+            {ok, Res1} = updater:cmd(AppDir, Cmd, [three_month()]),
+            case Res1 of
+                [] ->
+                    {accum, App, App};
+                _ ->
+                    RegEx = "(.*)\\|\\|\\|(.*)\\|\\|\\|(.*)\\|\\|\\|(.*)",
+                    RegOpt = [{capture, [1, 2, 3, 4], list}, unicode],
+                    RegRes = lists:foldl(
+                               fun(Line, Acc) ->
+                                       case re:run(Line, RegEx, RegOpt) of
+                                           {match, [Time, Hash, Author, Msg]} ->
+                                               [{App, Time, Hash, Author, Msg} | Acc];
+                                           _ ->
+                                               Acc
+                                       end
+                               end, [], Res1),
+                    {accum, App, RegRes}
+            end;
         _ ->
             RegEx = "(.*)\\|\\|\\|(.*)\\|\\|\\|(.*)\\|\\|\\|(.*)",
             RegOpt = [{capture, [1, 2, 3, 4], list}, unicode],
@@ -57,6 +75,15 @@ do(Dir, App, _VSN, _Source) ->
                       end
               end, [], Res),
             {accum, App, RegRes}
+    end.
+
+three_month() ->
+    {{Y, M, D}, _} = calendar:local_time(),
+    case M - 3 of
+        NewM when NewM > 0 ->
+            {Y, NewM, D};
+        _NewM ->
+            {Y - 1, 12, D}
     end.
 
 last_month() ->
