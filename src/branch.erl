@@ -81,10 +81,10 @@ deps_modifier({App, VSN, {git, Url, ""}}, Acc, Hash, Branches) ->
     deps_modifier({App, VSN, {git, Url, {branch, "HEAD"}}}, Acc, Hash, Branches);
 deps_modifier({App, VSN, {git, Url, {branch, "master"}}}, Acc, Hash, Branches) ->
     deps_modifier({App, VSN, {git, Url, {branch, "HEAD"}}}, Acc, Hash, Branches);
-deps_modifier({App, VSN, {git, Url, {branch, Branch}}}, {Acc, Branch}, Hash, Branches) ->
+deps_modifier({App, VSN, {git, Url, {branch, Branch1}}}, {Acc, Branch}, Hash, Branches) ->
     case re:run(Url, "(.*):external(.*)") of
         nomatch ->
-            case lists:member(Branch, Branches ++ ["HEAD"]) of
+            case lists:member(Branch1, Branches ++ ["HEAD"]) of
                 true ->
                     {[ {App, VSN, {git, Url, {branch, Branch}}} | Acc ], Branch};
                 false ->
