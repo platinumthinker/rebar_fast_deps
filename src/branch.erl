@@ -3,7 +3,7 @@
 
 -export([
          print/1,
-         create/3,
+         create/4,
          do/4
         ]).
 
@@ -21,7 +21,7 @@ print(Dir) ->
         end
     end, lists:usort(UniqRes)).
 
-create(Dir, Branch, IgnoredApp) ->
+create(Dir, Branch, IgnoredApp, Branches1) ->
     {ok, Res1} = deps:foreach(Dir, ?MODULE, []),
     Res = lists:usort(Res1),
     {Hashs, Branches} = lists:foldl(fun({App, _, Branch1, Hash, _}, {Acc, Acc2}) ->
@@ -34,16 +34,16 @@ create(Dir, Branch, IgnoredApp) ->
                   true ->
                       ?CONSOLE("Ignoring \e[31m~s\e[0m: already exist ~p",
                                [App, Branch]);
-                  false -> cfg_modifier(AppDir, Branch, Hashs)
+                  false -> cfg_modifier(AppDir, Branch, Hashs, Branches1)
               end;
          (_) ->
               none
     end, Res),
-    cfg_modifier(Dir, Branch, Hashs),
+    cfg_modifier(Dir, Branch, Hashs, Branches1),
     ok.
 
 
-cfg_modifier(AppDir, Branch, Hashs) ->
+cfg_modifier(AppDir, Branch, Hashs, Branches) ->
     Cmd = "git checkout -b ~s",
     updater:cmd(AppDir, Cmd, [Branch]),
     Name = filename:join(AppDir, ?REBAR_CFG),
@@ -54,7 +54,7 @@ cfg_modifier(AppDir, Branch, Hashs) ->
                     fun (Val, Acc) ->
                             AppStr = atom_to_list(element(1, Val)),
                             Hash = proplists:get_value(AppStr, Hashs),
-                            deps_modifier(Val, Acc, Hash)
+                            deps_modifier(Val, Acc, Hash, Branches)
                     end, {[], Branch}, lists:sort(Deps)),
             change_deps(Res, Conf, Name, Branch, AppDir);
         {error, enoent} ->
@@ -75,20 +75,25 @@ change_deps(Deps, Conf, Name, Branch, AppDir) ->
   Cmd1 = "git commit -am 'Create release branches ~s'",
   updater:cmd(AppDir, Cmd1, [Branch]).
 
-deps_modifier({App, VSN, {git, Url}}, Acc, Hash) ->
-    deps_modifier({App, VSN, {git, Url, {branch, "HEAD"}}}, Acc, Hash);
-deps_modifier({App, VSN, {git, Url, ""}}, Acc, Hash) ->
-    deps_modifier({App, VSN, {git, Url, {branch, "HEAD"}}}, Acc, Hash);
-deps_modifier({App, VSN, {git, Url, {branch, "master"}}}, Acc, Hash) ->
-    deps_modifier({App, VSN, {git, Url, {branch, "HEAD"}}}, Acc, Hash);
-deps_modifier({App, VSN, {git, Url, {branch, "HEAD"}}}, {Acc, Branch}, Hash) ->
+deps_modifier({App, VSN, {git, Url}}, Acc, Hash, Branches) ->
+    deps_modifier({App, VSN, {git, Url, {branch, "HEAD"}}}, Acc, Hash, Branches);
+deps_modifier({App, VSN, {git, Url, ""}}, Acc, Hash, Branches) ->
+    deps_modifier({App, VSN, {git, Url, {branch, "HEAD"}}}, Acc, Hash, Branches);
+deps_modifier({App, VSN, {git, Url, {branch, "master"}}}, Acc, Hash, Branches) ->
+    deps_modifier({App, VSN, {git, Url, {branch, "HEAD"}}}, Acc, Hash, Branches);
+deps_modifier({App, VSN, {git, Url, {branch, Branch}}}, {Acc, Branch}, Hash, Branches) ->
     case re:run(Url, "(.*):external(.*)") of
         nomatch ->
-            {[ {App, VSN, {git, Url, {branch, Branch}}} | Acc ], Branch};
+            case lists:member(Branch, Branches ++ ["HEAD"]) of
+                true ->
+                    {[ {App, VSN, {git, Url, {branch, Branch}}} | Acc ], Branch};
+                false ->
+                    {[ {App, VSN, {git, Url, Hash}} | Acc ], Branch}
+            end;
         {match, _} ->
             {[ {App, VSN, {git, Url, Hash}} | Acc ], Branch}
     end;
-deps_modifier(Dep, {Acc, Branch}, _Hash) ->
+deps_modifier(Dep, {Acc, Branch}, _Hash, _Branches) ->
     {[ Dep | Acc ], Branch}.
 
 do(Dir, App, _VSN, _Source) ->
