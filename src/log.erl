@@ -24,17 +24,17 @@ show(Dir) ->
     Comparator = fun({_, A, _, _, _}, {_, B, _, _, _}) -> A > B end,
     SortList = lists:sort(Comparator, FilteredDeps),
 
-    Format = "~s \e[34m~s\e[0m ~s ~ts\e[32m~s\e[0m~s ~ts~.120ts~s",
     Delim = "\e[33m● \e[0m",
     lists:foreach(fun({App, _, Hash, Author, Msg}) ->
         Spaces = string:copies(" ", MaxNum - length(Author)),
         Spaces2 = string:copies(" ", MaxNum2 - length(App)),
         End = case length(Msg) > 120 of
-            true -> "...";
+            true -> " ...";
             false -> ""
         end,
-        ?CONSOLE(Format, [Hash, Author, Spaces, Delim, App, Spaces2, Delim, Msg,
-                         End])
+        Format = "~s \e[34m~s\e[0m ~s ~ts\e[32m~s\e[0m~s ~ts~.120ts~s",
+        Args = [Hash, Author, Spaces, Delim, App, Spaces2, Delim, Msg, End],
+        ?CONSOLE(Format, Args)
     end, SortList).
 
 do(Dir, App, _VSN, _Source) ->

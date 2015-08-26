@@ -108,11 +108,19 @@ download_source(AppDir, {git, Url, Rev}=Src, IsVerbose) ->
 cmd(Dir, Str) ->
     cmd(Dir, Str, []).
 cmd(Dir, Str, Args) ->
-    cmd(Dir, Str, Args, 0).
+    try
+        cmd(Dir, Str, Args, 0)
+    catch
+        Err ->
+            io:format("Error ~p~n"
+                      "Stacktrace: ~stack", [Err, erlang:get_stacktrace()]),
+            erlang:halt(Err)
+    end.
+
 cmd(Dir, Str, Args, Retry) ->
     Port = erlang:open_port({spawn, ?FMT(Str, Args)}, [{cd, Dir}, exit_status,
-                {line, 6558}, hide, stderr_to_stdout]),
-    case cmd_loop(Port, []) of
+                {line, 6558}, hide, stderr_to_stdout, binary]),
+    case cmd_loop(Port, <<>>) of
         {ok, Output} -> {ok, Output};
         {error, Reason} ->
             if Retry + 1 > ?RETRY ->
@@ -121,22 +129,23 @@ cmd(Dir, Str, Args, Retry) ->
                    cmd(Dir, Str, Args, Retry + 1)
             end
     end.
+
 cmd_loop(Port, Acc) ->
     receive
         {Port, {data, {eol, Line}}} ->
-            cmd_loop(Port, [Line ++ "\n" | Acc]);
+            cmd_loop(Port, <<Acc/binary, Line/binary, <<"\n">>/binary>>);
         {Port, {data, {noeol, Line}}} ->
-            cmd_loop(Port, [Line | Acc]);
+            cmd_loop(Port, <<Acc/binary, Line/binary>>);
         {Port, {data, Line}} ->
-            cmd_loop(Port, [Line | Acc]);
+            cmd_loop(Port, <<Acc/binary, Line/binary>>);
         {Port, {exit_status, 0}} ->
-            {ok, replace_eol(lists:flatten(lists:reverse(Acc)))};
+            {ok, replace_eol(io_lib:format("~ts", [Acc]))};
         {Port, {exit_status, Rc}} ->
-            {error, {Rc, replace_eol(lists:flatten(lists:reverse(Acc)))}}
+            {error, {Rc, replace_eol(io_lib:format("~ts", [Acc]))}}
     end.
 
 replace_eol(Line) ->
-    ReFlags = [global, bsr_unicode],
+    ReFlags = [global, unicode],
     [ binary_to_list(L) || L <- re:replace(Line, "\\R", "", ReFlags), L =/= [] ].
 
 

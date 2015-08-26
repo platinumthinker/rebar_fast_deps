@@ -35,5 +35,5 @@ deps_modifier({App, VSN, Source, _Res}, Acc) ->
 do(Dir, App, VSN, Source) ->
     AppDir = filename:join(Dir, App),
     Cmd = "git --no-pager log --quiet --pretty=format:%h%n --max-count=1",
-    {ok, [Res]} = updater:cmd(AppDir, Cmd, []),
+    {ok, Res} = updater:cmd(AppDir, Cmd, []),
     {accum, App, {App, VSN, Source, Res}}.
