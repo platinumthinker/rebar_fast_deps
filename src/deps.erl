@@ -37,15 +37,21 @@ foreach(Dir, Module, Acc, Delay, RebarCfg) ->
                DownloadList :: list({_, _, _, _} | {_, _, _} | {_, _}),
                _AccResult, Delay :: boolean()) -> {ok, list()} | none.
 bfs_step(Module, Dir, DepsList, AccResult, Delay) ->
-    Q = lists:foldl(
-      fun({App, VSN, Source, [raw]}, Acc) ->
-              queue:in({App, VSN, Source}, Acc);
-         (A = {_, _, _}, Acc) ->
-              queue:in(A, Acc);
+    {Q, ViewedDeps} = lists:foldl(
+      fun({App, VSN, Source, [raw]}, {Acc1, Acc2}) ->
+              {
+               queue:in({App, VSN, Source}, Acc1),
+               gb_sets:add(App, Acc2)
+              };
+         (A = {App, _, _}, {Acc1, Acc2}) ->
+              {
+               queue:in(A, Acc1),
+               gb_sets:add(App, Acc2)
+              };
          (Drop, Acc) ->
               ?WARN("Drop ~p", [Drop]),
               Acc
-      end, queue:new(), DepsList),
+      end, {queue:new(), gb_sets:new()}, DepsList),
 
     case lists:member(?ROOT, erlang:registered()) of
         true ->
@@ -60,14 +66,14 @@ bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList, AccResult
       fun(A = {App, VSN, Source}, Acc) ->
                spawn(
                  fun() ->
-                        Delay andalso timer:sleep(50),
+                        Delay andalso timer:sleep(100),
                         ?ROOT ! Module:do(Dir, App, VSN, Source)
                  end),
               [A | Acc];
          ({App, VSN, Source, [raw]}, Acc) ->
                spawn(
                  fun() ->
-                        Delay andalso timer:sleep(50),
+                        Delay andalso timer:sleep(100),
                         ?ROOT ! Module:do(Dir, App, VSN, Source)
                  end),
               [{App, VSN, Source} | Acc];
