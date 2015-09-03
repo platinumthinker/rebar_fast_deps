@@ -53,21 +53,21 @@ bfs_step(Module, Dir, DepsList, AccResult, Delay) ->
         false ->
             true = erlang:register(?ROOT, self())
     end,
-    bfs_step(Module, Dir, Q, gb_sets:new(), DepsList, gb_sets:new(), AccResult, Delay).
+    bfs_step(Module, Dir, Q, Q, DepsList, gb_sets:new(), AccResult, Delay).
 
 bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList, AccResult, Delay) ->
     CorrectDownList = lists:reverse(lists:foldl(
       fun(A = {App, VSN, Source}, Acc) ->
                spawn(
                  fun() ->
-                        Delay andalso timer:sleep(300),
+                        Delay andalso timer:sleep(50),
                         ?ROOT ! Module:do(Dir, App, VSN, Source)
                  end),
               [A | Acc];
          ({App, VSN, Source, [raw]}, Acc) ->
                spawn(
                  fun() ->
-                        Delay andalso timer:sleep(300),
+                        Delay andalso timer:sleep(50),
                         ?ROOT ! Module:do(Dir, App, VSN, Source)
                  end),
               [{App, VSN, Source} | Acc];
