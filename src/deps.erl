@@ -59,7 +59,7 @@ bfs_step(Module, Dir, DepsList, AccResult, Delay) ->
         false ->
             true = erlang:register(?ROOT, self())
     end,
-    bfs_step(Module, Dir, Q, Q, DepsList, gb_sets:new(), AccResult, Delay).
+    bfs_step(Module, Dir, Q, ViewedDeps, DepsList, gb_sets:new(), AccResult, Delay).
 
 bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList, AccResult, Delay) ->
     CorrectDownList = lists:reverse(lists:foldl(
