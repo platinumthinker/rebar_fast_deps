@@ -118,6 +118,7 @@ bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList, AccResult
             AppDir = filename:join([Dir, App, ?REBAR_CFG]),
             try
                 Child = case file:consult(AppDir) of
+                case file:consult(AppDir) of
                             {ok,    Config} -> proplists:get_value(deps, Config, []);
                             {error, enoent} -> []
                         end
