@@ -32,7 +32,7 @@ show(Dir) ->
             true -> " ...";
             false -> ""
         end,
-        Format = "~s \e[34m~s\e[0m ~s ~ts\e[32m~s\e[0m~s ~ts~.120ts~s",
+        Format = "~s \e[34m~ts\e[0m ~s ~s\e[32m~s\e[0m~s ~ts~.120ts~s",
         Args = [Hash, Author, Spaces, Delim, App, Spaces2, Delim, Msg, End],
         ?CONSOLE(Format, Args)
     end, SortList).
