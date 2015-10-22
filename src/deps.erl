@@ -116,10 +116,18 @@ bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList, AccResult
     case queue:out(Queue) of
         {{value, {App, _Vsn, _Source}}, Q} ->
             AppDir = filename:join([Dir, App, ?REBAR_CFG]),
-            Child = case file:consult(AppDir) of
-                {ok,    Config} -> proplists:get_value(deps, Config, []);
-                {error, enoent} -> []
+            try
+                Child = case file:consult(AppDir) of
+                            {ok,    Config} -> proplists:get_value(deps, Config, []);
+                            {error, enoent} -> []
+                        end
+            catch
+                _:E ->
+                    ?ERROR("Error when file ~s consult: ~p", [AppDir, E]),
+                    throw(E)
             end,
+
+
             {NewQ, NewS, DownloadL} = lists:foldl(
                      fun(Item = {Dep, _, _}, {AccQ, AccS, AccD}) ->
                              case gb_sets:is_member(Dep, AccS) of
