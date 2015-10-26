@@ -12,28 +12,31 @@
 show(Dir) ->
     {ok, Deps} = deps:foreach(Dir, ?MODULE, []),
     {FilteredDeps, MaxNum, MaxNum2} = lists:foldl(
-        fun({App, B, C, Author, D}, {Acc, MAcc, MAcc2}) ->
+        fun({App, B, C, Author, Msg}, {Acc, MAcc, MAcc2}) ->
+                AuthorU = unicode:characters_to_list(list_to_binary(Author)),
+                MsgU = unicode:characters_to_list(list_to_binary(Msg)),
                 AppStr = erlang:atom_to_list(App),
                 {
-                 [ {AppStr, B, C, Author, D} | Acc],
-                 erlang:max(erlang:length(Author), MAcc),
-                 erlang:max(erlang:length(AppStr), MAcc2)
+                 [ {AppStr, B, C, AuthorU, MsgU} | Acc],
+                 erlang:max(string:len(AuthorU), MAcc),
+                 erlang:max(string:len(AppStr), MAcc2)
                 };
            (_, Acc) -> Acc
         end, {[], 0, 0}, Deps),
     Comparator = fun({_, A, _, _, _}, {_, B, _, _, _}) -> A > B end,
     SortList = lists:sort(Comparator, FilteredDeps),
 
-    Delim = "\e[33m● \e[0m",
+    Delim = "\e[33m●\e[0m",
     lists:foreach(fun({App, _, Hash, Author, Msg}) ->
-        Spaces = string:copies(" ", MaxNum - length(Author)),
-        Spaces2 = string:copies(" ", MaxNum2 - length(App)),
-        End = case length(Msg) > 120 of
-            true -> " ...";
+        AutCentr = string:copies(" ", (MaxNum -  string:len(Author))) ++ Author,
+        AppCentr = string:centre(App, MaxNum2),
+        End = case length(Msg) > 58 of
+            true -> "..";
             false -> ""
         end,
-        Format = "~s \e[34m~ts\e[0m ~s ~s\e[32m~s\e[0m~s ~ts~.120ts~s",
-        Args = [Hash, Author, Spaces, Delim, App, Spaces2, Delim, Msg, End],
+        Format = "~s \e[34m~ts \e[0m~ts\e[32m~s\e[0m~ts ~.58ts~s",
+        Args = [ Hash, AutCentr, Delim, AppCentr, Delim,
+                 [ X || X <- Msg, X /= '\n'], End ],
         ?CONSOLE(Format, Args)
     end, SortList).
 
