@@ -1,26 +1,26 @@
 -module(deps).
 
 -export([
-         foreach/3,
          foreach/4,
-         foreach/5
+         foreach/5,
+         foreach/6
         ]).
 
 -include("rebar.hrl").
 
 -define(ROOT, bfs_root).
--callback do(Dir :: string(), App :: atom(), _VSN, _Source) ->
+-callback do(Dir :: string(), App :: atom(), _VSN, _Source, _Args) ->
     {nothing, App :: atom()} |
     {ok, App :: atom(), Output :: string()} |
     {error, App :: atom(), Reason :: string()}.
 
--spec foreach(Dir :: string(), Module :: module(), _Acc) -> {ok, _Res} | {error, _Reason}.
-foreach(Dir, Module, Acc) ->
-    foreach(Dir, Module, Acc, false, ?REBAR_CFG).
-foreach(Dir, Module, Acc, RebarCfg) ->
-    foreach(Dir, Module, Acc, false, RebarCfg).
+-spec foreach(Dir :: string(), Module :: module(), _Acc, _Args) -> {ok, _Res} | {error, _Reason}.
+foreach(Dir, Module, Acc, Args) ->
+    foreach(Dir, Module, Acc, Args, false, ?REBAR_CFG).
+foreach(Dir, Module, Acc, Args, RebarCfg) ->
+    foreach(Dir, Module, Acc, Args, false, RebarCfg).
 
-foreach(Dir, Module, Acc, Delay, RebarCfg) ->
+foreach(Dir, Module, Acc, Args, Delay, RebarCfg) ->
     ok = file:set_cwd(Dir),
     {DepsFldr, DepsList} = case file:consult(RebarCfg) of
         {ok, Config} ->
@@ -31,12 +31,13 @@ foreach(Dir, Module, Acc, Delay, RebarCfg) ->
         {error, enoent} -> {"deps", []}
     end,
     DepsFolder = filename:join(Dir, DepsFldr),
-    bfs_step(Module, DepsFolder, DepsList, Acc, Delay).
+    bfs_step(Module, DepsFolder, DepsList, Acc, Delay,Args).
 
 -spec bfs_step(Module :: module(), Dir :: string(),
                DownloadList :: list({_, _, _, _} | {_, _, _} | {_, _}),
-               _AccResult, Delay :: boolean()) -> {ok, list()} | none.
-bfs_step(Module, Dir, DepsList, AccResult, Delay) ->
+               _AccResult, Delay :: boolean(),
+			   _Args) -> {ok, list()} | none.
+bfs_step(Module, Dir, DepsList, AccResult, Delay,Args) ->
     {Q, ViewedDeps} = lists:foldl(
       fun({App, VSN, Source, [raw]}, {Acc1, Acc2}) ->
               {
@@ -59,22 +60,22 @@ bfs_step(Module, Dir, DepsList, AccResult, Delay) ->
         false ->
             true = erlang:register(?ROOT, self())
     end,
-    bfs_step(Module, Dir, Q, ViewedDeps, DepsList, gb_sets:new(), AccResult, Delay).
+    bfs_step(Module, Dir, Q, ViewedDeps, DepsList, gb_sets:new(), AccResult, Delay, Args).
 
-bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList, AccResult, Delay) ->
+bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList, AccResult, Delay, Args) ->
     CorrectDownList = lists:reverse(lists:foldl(
       fun(A = {App, VSN, Source}, Acc) ->
                spawn(
                  fun() ->
                         Delay andalso timer:sleep(100),
-                        ?ROOT ! Module:do(Dir, App, VSN, Source)
+                        ?ROOT ! Module:do(Dir, App, VSN, Source, Args)
                  end),
               [A | Acc];
          ({App, VSN, Source, [raw]}, Acc) ->
                spawn(
                  fun() ->
                         Delay andalso timer:sleep(100),
-                        ?ROOT ! Module:do(Dir, App, VSN, Source)
+                        ?ROOT ! Module:do(Dir, App, VSN, Source, Args)
                  end),
               [{App, VSN, Source} | Acc];
          (Drop, Acc) ->
@@ -157,7 +158,7 @@ bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList, AccResult
                              {AccQ, AccS, AccD}
                      end, {Q, ViewedDeps, []}, Child),
             bfs_step(Module, Dir, NewQ, NewS, DownloadL, DownL,
-                     NewAccResult, Delay);
+                     NewAccResult, Delay, Args);
         {empty, _} ->
             {ok, NewAccResult}
     end.

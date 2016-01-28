@@ -1,15 +1,15 @@
 -module(push).
-
+-behaviour(deps).
 -export([
          all/1,
-         do/4
+         do/5
         ]).
 
 -include("rebar.hrl").
 
 -spec all(Dir :: string()) -> ok | error.
 all(Dir) ->
-    {ok, Changes} = deps:foreach(Dir, ?MODULE, []),
+    {ok, Changes} = deps:foreach(Dir, ?MODULE, [],[]),
     lists:foreach(
       fun({App, AppDir, change, Status = true}) ->
               Cmd1 = "git rev-parse --abbrev-ref HEAD",
@@ -28,7 +28,7 @@ all(Dir) ->
          (_) -> none
       end, Changes).
 
-do(Dir, App, _VSN, _Source) ->
+do(Dir, App, _VSN, _Source,[]) ->
     AppDir = filename:join(Dir, App),
     Cmd = "git status --short",
     Cmd1 = "git status",

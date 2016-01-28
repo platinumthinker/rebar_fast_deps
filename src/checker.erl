@@ -1,8 +1,8 @@
 -module(checker).
-
+-behaviour(deps).
 -export([
          checker/1,
-         do/4
+         do/5
         ]).
 
 -include("rebar.hrl").
@@ -10,7 +10,7 @@
 -spec checker(Dir :: string()) -> ok | error.
 checker(Dir) ->
     status:status(Dir),
-    {ok, Deps} = deps:foreach(Dir, ?MODULE, []),
+    {ok, Deps} = deps:foreach(Dir, ?MODULE, [],[]),
     {ok, Config} = file:consult(filename:join(Dir, ?REBAR_CFG)),
     DepsFldr = proplists:get_value(deps_dir, Config, "deps"),
     Dirs = filelib:wildcard(filename:join([Dir, DepsFldr, "*"])),
@@ -25,6 +25,6 @@ checker(Dir) ->
               end
       end, Dirs).
 
-do(Dir, App, _VSN, _Source) ->
+do(Dir, App, _VSN, _Source,[]) ->
     AppDir = filename:join(Dir, App),
     {accum, App, {AppDir}}.

@@ -4,7 +4,7 @@
 -export([
          print/1,
          create/4,
-         do/4
+         do/5
         ]).
 
 -include("rebar.hrl").
@@ -96,7 +96,7 @@ deps_modifier({App, VSN, {git, Url, {branch, Branch1}}}, {Acc, Branch}, Hash, Br
 deps_modifier(Dep, {Acc, Branch}, _Hash, _Branches) ->
     {[ Dep | Acc ], Branch}.
 
-do(Dir, App, _VSN, _Source) ->
+do(Dir, App, _VSN, _Source,[]) ->
     AppDir = filename:join(Dir, App),
     Cmd = "git --no-pager branch --all",
     Cmd2 = "git --no-pager log -1 --oneline --pretty=tformat:'%h'",

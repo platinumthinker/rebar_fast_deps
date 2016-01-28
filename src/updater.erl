@@ -3,8 +3,8 @@
 
 -export([
          update_all/2,
-         do/4,
          do/5,
+         do/6,
          cmd/3
         ]).
 
@@ -12,11 +12,11 @@
 
 -spec update_all(Dir :: string(), RebarCfg :: string()) -> ok | error.
 update_all(Dir, RebarCfg) ->
-    deps:foreach(Dir, ?MODULE, ok, RebarCfg).
+    deps:foreach(Dir, ?MODULE, ok, [], RebarCfg).
 
-do(Dir, App, _VSN, Source) ->
-    do(Dir, App, _VSN, Source, false).
-do(Dir, App, _VSN, Source, IsVerbose) ->
+do(Dir, App, _VSN, Source, []) ->
+    do(Dir, App, _VSN, Source, [], false).
+do(Dir, App, _VSN, Source, [], IsVerbose) ->
     AppDir = filename:join(Dir, App),
     try
         case filelib:is_dir(AppDir) of
@@ -119,7 +119,7 @@ cmd(Dir, Str, Args) ->
 
 cmd(Dir, Str, Args, Retry) ->
     Port = erlang:open_port({spawn, ?FMT(Str, Args)}, [{cd, Dir}, exit_status,
-                {line, 6558}, hide, stderr_to_stdout, binary]),
+                {line, 100}, hide, stderr_to_stdout, binary]),
     case cmd_loop(Port, <<>>) of
         {ok, Output} -> {ok, Output};
         {error, Reason} ->
@@ -143,11 +143,10 @@ cmd_loop(Port, Acc) ->
         {Port, {exit_status, Rc}} ->
             {error, {Rc, replace_eol(io_lib:format("~ts", [Acc]))}}
     end.
-
-replace_eol(Line) ->
-    ReFlags = [global, unicode],
-    [ binary_to_list(L) || L <- re:replace(Line, "\\R", "", ReFlags), L =/= [] ].
-
+%Вырезвает все пустые строки.
+replace_eol(Line) -> 
+    [ binary_to_list(L) || L <- re:split(Line, "\\n",[unicode, {return, binary}]), L =/= <<>>] .
+    
 
 time_difference_ms({_, _, _} = FinishNow, {_, _, _} = StartNow) ->
     (now_to_ticks(FinishNow) - now_to_ticks(StartNow)) div 1000;

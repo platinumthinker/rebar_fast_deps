@@ -1,17 +1,17 @@
 -module(status).
-
+-behaviour(deps).
 -export([
          status/1,
-         do/4
+         do/5
         ]).
 
 -include("rebar.hrl").
 
 -spec status(Dir :: string()) -> ok | error.
 status(Dir) ->
-    deps:foreach(Dir, ?MODULE, ok).
+    deps:foreach(Dir, ?MODULE, ok, []).
 
-do(Dir, App, _VSN, _Source) ->
+do(Dir, App, _VSN, _Source, []) ->
     AppDir = filename:join(Dir, App),
     Cmd = "git status --short",
     case updater:cmd(AppDir, Cmd, []) of

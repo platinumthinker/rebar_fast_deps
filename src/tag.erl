@@ -4,13 +4,13 @@
 -export([
          print/1,
          create/3,
-         do/4
+         do/5
         ]).
 
 -include("rebar.hrl").
 
 print(Dir) ->
-    {ok, Res} = deps:foreach(Dir, ?MODULE, []),
+    {ok, Res} = deps:foreach(Dir, ?MODULE, [],[]),
     UniqRes = lists:foldl(fun({_, _, Val}, Acc) ->
         lists:umerge(Val, Acc)
     end, [], Res),
@@ -32,7 +32,7 @@ create(Dir, Tag, IgnoredApp) ->
     end, Res),
     ok.
 
-do(Dir, App, _VSN, _Source) ->
+do(Dir, App, _VSN, _Source,[]) ->
     AppDir = filename:join(Dir, App),
     Cmd = "git --no-pager tag",
     {ok, Res} = updater:cmd(AppDir, Cmd, []),

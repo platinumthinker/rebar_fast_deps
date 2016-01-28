@@ -4,14 +4,14 @@
 
 -export([
         show/1,
-        do/4
+        do/5
         ]).
 
 -include("rebar.hrl").
 
 -spec show(Dir :: string()) -> ok | error.
 show(Dir) ->
-    {ok, Deps} = deps:foreach(Dir, ?MODULE, []),
+    {ok, Deps} = deps:foreach(Dir, ?MODULE, [], []),
     {FilteredDeps, MaxNum, MaxNum2} = lists:foldl(
         fun({App, B, C, Author, Msg}, {Acc, MAcc, MAcc2}) ->
                 AuthorU = unicode:characters_to_list(list_to_binary(Author)),
@@ -41,7 +41,7 @@ show(Dir) ->
         ?CONSOLE(Format, Args)
     end, SortList).
 
-do(Dir, App, _VSN, _Source) ->
+do(Dir, App, _VSN, _Source, []) ->
     AppDir = filename:join(Dir, App),
     Cmd = "git --no-pager log --quiet --pretty=tformat:'%at|||%h|||%an|||%s' --after='~p'",
     {ok, Res} = updater:cmd(AppDir, Cmd, [last_month()]),

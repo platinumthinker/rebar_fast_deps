@@ -10,9 +10,17 @@ main(Args) ->
     io:setopts([{encoding, unicode}]),
     main_vrap(Args).
 
+
+main_vrap([A|B]) when A == "change"; A == "ch" ->    
+	{ok, Dir} = file:get_cwd(),                       
+    changelog:create([Dir,B]); 
+
+ 
 main_vrap([Command]) ->
     {ok, Dir} = file:get_cwd(),
     main_vrap([Dir, Command]);
+main_vrap([WD, A]) when A == "change"; A == "ch" ->                               
+    changelog:create([WD, ""]);   
 main_vrap([WD, A]) when A == "push"; A == "ps" ->
     push:all([WD]);
 main_vrap([WD, A]) when A == "update"; A == "up" ->
@@ -54,6 +62,7 @@ main_vrap(["help", _]) ->
               "  save   (sa) - For create rebar.config.save with deps on current state~n"
               "  load   (ld) - For load state from rebar.config.save~n"
               "  log    (lg) - Show deps log~n"
+			  "  change (ch) - Create debian/changelog~n"
               "  branch (br) - List releases branches ~n"
               "  br release_2_14 --ignore folsom lagger - Create branch without ignores app~n"
               "  br release_2_14 --master_branch rc18~n"

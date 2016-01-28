@@ -3,14 +3,14 @@
 
 -export([
          save_all/1,
-         do/4
+         do/5
         ]).
 
 -include("rebar.hrl").
 
 -spec save_all(Dir :: string()) -> ok | error.
 save_all(Dir) ->
-    {ok, Deps} = deps:foreach(Dir, ?MODULE, []),
+    {ok, Deps} = deps:foreach(Dir, ?MODULE, [], []),
     {ok, Conf} = file:consult(filename:join(Dir, ?REBAR_CFG)),
     NewDeps = lists:reverse(lists:foldl(fun deps_modifier/2, [], lists:sort(Deps))),
     NewConf = lists:keyreplace(deps, 1, Conf, {deps, NewDeps}),
@@ -32,7 +32,7 @@ deps_modifier({App, VSN, {lock, Url}, Hash}, Acc) ->
 deps_modifier({App, VSN, Source, _Res}, Acc) ->
     [ {App, VSN, Source} | Acc ].
 
-do(Dir, App, VSN, Source) ->
+do(Dir, App, VSN, Source,[]) ->
     AppDir = filename:join(Dir, App),
     Cmd = "git --no-pager log --quiet --pretty=format:%h%n --max-count=1",
     {ok, Res} = updater:cmd(AppDir, Cmd, []),
