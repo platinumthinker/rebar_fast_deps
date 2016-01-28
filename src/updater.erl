@@ -18,18 +18,18 @@ update_all(Dir, RebarCfg) ->
 
 do(Dir, App, _VSN, Source, []) ->
     do(Dir, App, _VSN, Source, [], false).
-do(Dir, App, _VSN, Source, [], IsVerbose) ->
+do(Dir, App, _VSN, Source, [], _IsVerbose) ->
     AppDir = filename:join(Dir, App),
     try
         case filelib:is_dir(AppDir) of
             true ->
-                case update_source(AppDir, Source, IsVerbose) of
+                case update_source(AppDir, Source) of
                     [] -> {nothing, App};
                     _Line ->
                         {ok, App, io_lib:format(?FMT_UPDATE, [App, Source])}
                 end;
             false ->
-                download_source(AppDir, Source, IsVerbose),
+                download_source(AppDir, Source),
                 {ok, App, io_lib:format(?FMT_DOWNLOAD, [App, Source])}
         end
     catch
@@ -37,73 +37,46 @@ do(Dir, App, _VSN, Source, [], IsVerbose) ->
             {error, App, Reason}
     end.
 
-update_source(AppDir, {git, Url}, IsVerbose) ->
-    update_source(AppDir, {git, Url, {branch, "master"}}, IsVerbose);
-update_source(AppDir, {git, Url, ""}, IsVerbose) ->
-    update_source(AppDir, {git, Url, {branch, "master"}}, IsVerbose);
-update_source(AppDir, {git, _Url, {branch, Branch}}=Src, IsVerbose) ->
-    Now = erlang:now(),
+update_source(AppDir, {git, Url}) ->
+    update_source(AppDir, {git, Url, {branch, "master"}});
+update_source(AppDir, {git, Url, ""}) ->
+    update_source(AppDir, {git, Url, {branch, "master"}});
+update_source(AppDir, {git, _Url, {branch, Branch}}) ->
     {ok, Line} = cmd(AppDir, "git fetch origin"),
-    Now1 = erlang:now(),
     cmd(AppDir, "git checkout -q ~s", [Branch]),
-    Now2 = erlang:now(),
     cmd(AppDir, "git pull --ff-only --no-rebase -q origin ~s", [Branch]),
-    Now3 = erlang:now(),
-    IsVerbose andalso
-        io:format("update: ~10000p, fetch: ~10000pms, pull: ~10000pms~n",
-            [Src, time_difference_ms(Now1, Now), time_difference_ms(Now3, Now2)]),
     Line;
-update_source(AppDir, {git, _Url, {tag, Tag}}=Src, IsVerbose) ->
-    Now = erlang:now(),
+update_source(AppDir, {git, _Url, {tag, Tag}}) ->
     {ok, Line} = cmd(AppDir, "git fetch origin"),
-    Now1 = erlang:now(),
     cmd(AppDir, "git checkout -q ~s", [Tag]),
-    IsVerbose andalso
-        io:format("update: ~1000p, fetch: ~1000pms~n", [Src, time_difference_ms(Now1, Now)]),
     Line;
-update_source(AppDir, {git, _Url, Refspec}=Src, IsVerbose) ->
-    Now = erlang:now(),
+update_source(AppDir, {git, _Url, Refspec}) ->
     {ok, Line} = cmd(AppDir, "git fetch origin"),
-    Now1 = erlang:now(),
     cmd(AppDir, "git checkout -q ~s", [Refspec]),
-    IsVerbose andalso
-        io:format("update: ~1000p, fetch: ~1000pms~n", [Src, time_difference_ms(Now1, Now)]),
     Line.
 
-download_source(AppDir, {git, Url}, IsVerbose) ->
-    download_source(AppDir, {git, Url, {branch, "master"}}, IsVerbose);
-download_source(AppDir, {git, Url, ""}, IsVerbose) ->
-    download_source(AppDir, {git, Url, {branch, "master"}}, IsVerbose);
-download_source(AppDir, {git, Url, {branch, Branch}}=Src, IsVerbose) ->
+download_source(AppDir, {git, Url}) ->
+    download_source(AppDir, {git, Url, {branch, "master"}});
+download_source(AppDir, {git, Url, ""}) ->
+    download_source(AppDir, {git, Url, {branch, "master"}});
+download_source(AppDir, {git, Url, {branch, Branch}}) ->
     ok = filelib:ensure_dir(AppDir),
     Dir = filename:dirname(AppDir),
     Folder = filename:basename(AppDir),
-    Now = erlang:now(),
     {ok, _} = cmd(Dir, "git clone -n ~s ~s", [Url, Folder]),
-    Now1 = erlang:now(),
-    cmd(AppDir, "git checkout -q origin/~s", [Branch]),
-    IsVerbose andalso
-        io:format("download: ~1000p, clone: ~1000pms~n", [Src, time_difference_ms(Now1, Now)]);
-download_source(AppDir, {git, Url, {tag, Tag}}=Src, IsVerbose) ->
+    cmd(AppDir, "git checkout -q origin/~s", [Branch]);
+download_source(AppDir, {git, Url, {tag, Tag}}) ->
     ok = filelib:ensure_dir(AppDir),
     Dir = filename:dirname(AppDir),
     Folder = filename:basename(AppDir),
-    Now = erlang:now(),
     {ok, _} = cmd(Dir, "git clone -n ~s ~s", [Url, Folder]),
-    Now1 = erlang:now(),
-    cmd(AppDir, "git checkout -q ~s", [Tag]),
-    IsVerbose andalso
-        io:format("download: ~1000p, clone: ~1000pms~n", [Src, time_difference_ms(Now1, Now)]);
-download_source(AppDir, {git, Url, Rev}=Src, IsVerbose) ->
+    cmd(AppDir, "git checkout -q ~s", [Tag]);
+download_source(AppDir, {git, Url, Rev}) ->
     ok = filelib:ensure_dir(AppDir),
     Dir = filename:dirname(AppDir),
     Folder = filename:basename(AppDir),
-    Now = erlang:now(),
     {ok, _} = cmd(Dir, "git clone -n ~s ~s", [Url, Folder]),
-    Now1 = erlang:now(),
-    cmd(AppDir, "git checkout -q ~s", [Rev]),
-    IsVerbose andalso
-        io:format("download: ~1000p, clone: ~1000pms~n", [Src, time_difference_ms(Now1, Now)]).
+    cmd(AppDir, "git checkout -q ~s", [Rev]).
 
 cmd(Dir, Str) ->
     cmd(Dir, Str, []).
@@ -146,21 +119,3 @@ cmd_loop(Port, Acc) ->
 %Вырезвает все пустые строки.
 replace_eol(Line) ->
     [ binary_to_list(L) || L <- re:split(Line, "\\n",[unicode, {return, binary}]), L =/= <<>>] .
-
-
-time_difference_ms({_, _, _} = FinishNow, {_, _, _} = StartNow) ->
-    (now_to_ticks(FinishNow) - now_to_ticks(StartNow)) div 1000;
-
-time_difference_ms({_, _, _} = _FinishNow, StartNow) ->
-    erlang:error(badarg, [{now2, StartNow}]);
-
-time_difference_ms(FinishNow, {_, _, _} = _StartNow) ->
-    erlang:error(badarg, [{now1, FinishNow}]).
-%%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
--spec now_to_ticks({MegaSeconds :: integer(), Seconds :: integer(), Miliseconds :: integer()}) -> integer().
-%%--------------------------------------------------------------------
-%% Преобразует время из формата now в числовое представление времени.
-%%--------------------------------------------------------------------
-now_to_ticks({MegaSeconds, Seconds, Miliseconds}) ->
-    MegaSeconds * 1000000000000 + Seconds * 1000000 + Miliseconds.
