@@ -9,6 +9,8 @@
         ]).
 
 -include("rebar.hrl").
+-define(FMT_UPDATE, "Update \e[1m\e[32m~p\e[0m from ~200p").
+-define(FMT_DOWNLOAD, "Download \e[1m\e[32m~p\e[0m from ~200p").
 
 -spec update_all(Dir :: string(), RebarCfg :: string()) -> ok | error.
 update_all(Dir, RebarCfg) ->
@@ -24,13 +26,11 @@ do(Dir, App, _VSN, Source, [], IsVerbose) ->
                 case update_source(AppDir, Source, IsVerbose) of
                     [] -> {nothing, App};
                     _Line ->
-                        {ok, App, io_lib:format("Update \e[1m\e[32m~p\e[0m from ~200p",
-                                           [App, Source])}
+                        {ok, App, io_lib:format(?FMT_UPDATE, [App, Source])}
                 end;
             false ->
                 download_source(AppDir, Source, IsVerbose),
-                {ok, App, io_lib:format("Download \e[1m\e[32m~p\e[0m from ~200p",
-                                        [App, Source])}
+                {ok, App, io_lib:format(?FMT_DOWNLOAD, [App, Source])}
         end
     catch
         _:{badmatch, {error, {_Code, Reason}}} ->
@@ -144,9 +144,9 @@ cmd_loop(Port, Acc) ->
             {error, {Rc, replace_eol(io_lib:format("~ts", [Acc]))}}
     end.
 %Вырезвает все пустые строки.
-replace_eol(Line) -> 
+replace_eol(Line) ->
     [ binary_to_list(L) || L <- re:split(Line, "\\n",[unicode, {return, binary}]), L =/= <<>>] .
-    
+
 
 time_difference_ms({_, _, _} = FinishNow, {_, _, _} = StartNow) ->
     (now_to_ticks(FinishNow) - now_to_ticks(StartNow)) div 1000;
