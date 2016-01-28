@@ -12,6 +12,7 @@
 -callback do(Dir :: string(), App :: atom(), _VSN, _Source, _Args) ->
     {nothing, App :: atom()} |
     {ok, App :: atom(), Output :: string()} |
+    {accum, App :: atom(), Res :: any()} |
     {error, App :: atom(), Reason :: string()}.
 
 -spec foreach(Dir :: string(), Module :: module(), _Acc, _Args) -> {ok, _Res} | {error, _Reason}.

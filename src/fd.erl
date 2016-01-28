@@ -11,16 +11,16 @@ main(Args) ->
     main_vrap(Args).
 
 
-main_vrap([A|B]) when A == "change"; A == "ch" ->    
-	{ok, Dir} = file:get_cwd(),                       
-    changelog:create([Dir,B]); 
+main_vrap([A|B]) when A == "change"; A == "ch" ->
+	{ok, Dir} = file:get_cwd(),
+    changelog:create([Dir,B]);
 
- 
+
 main_vrap([Command]) ->
     {ok, Dir} = file:get_cwd(),
     main_vrap([Dir, Command]);
-main_vrap([WD, A]) when A == "change"; A == "ch" ->                               
-    changelog:create([WD, ""]);   
+main_vrap([WD, A]) when A == "change"; A == "ch" ->
+    changelog:create([WD, ""]);
 main_vrap([WD, A]) when A == "push"; A == "ps" ->
     push:all([WD]);
 main_vrap([WD, A]) when A == "update"; A == "up" ->
@@ -53,7 +53,7 @@ main_vrap([WD, A, Name, "--ignore" | IgnoredApp]) when A == "branch"; A == "br" 
 main_vrap([WD, A, Name, "--master_branch" | Branches]) when A == "branch"; A == "br" ->
     branch:create([WD], Name, [], Branches);
 main_vrap([A, WD, Name]) when A == "branch"; A == "br" ->
-    branch:create([WD], Name, []);
+    branch:create([WD], Name, [], "master");
 main_vrap(["help", _]) ->
     io:format("Usage: fd <command> [path] (fast deps)~n"
               "Commands:~n"

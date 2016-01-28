@@ -12,7 +12,7 @@
 -define(FMT_UPDATE, "Update \e[1m\e[32m~p\e[0m from ~200p").
 -define(FMT_DOWNLOAD, "Download \e[1m\e[32m~p\e[0m from ~200p").
 
--spec update_all(Dir :: string(), RebarCfg :: string()) -> ok | error.
+-spec update_all(Dir :: string(), RebarCfg :: string()) -> {ok | error, _Res}.
 update_all(Dir, RebarCfg) ->
     deps:foreach(Dir, ?MODULE, ok, [], RebarCfg).
 

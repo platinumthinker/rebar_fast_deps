@@ -7,11 +7,11 @@
 		 write_commits/1
         ]).
 
-
-
 -include("rebar.hrl").
 -define(ADD, addDeps).
--spec create(Dir :: string()) -> ok | error.
+
+-spec create([string()]) -> ok | error.
+
 create([Dir, Option]) ->
 	ets:new(?ADD, [duplicate_bag, public, named_table]),
 
@@ -109,7 +109,8 @@ check_table_add(Key)->
 
 
 check_table_delete('$end_of_table')->
-	ets:delete(?MODULE);
+	ets:delete(?MODULE),
+    ok;
 check_table_delete(Key)->
 	io:format("    - ~p.~n", [Key]),
 	check_table_delete(ets:next(?MODULE, Key)). % Распечатка таблицы с зависимостями
