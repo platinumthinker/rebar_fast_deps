@@ -10,7 +10,7 @@
 -include("rebar.hrl").
 
 print(Dir) ->
-    {ok, Res} = deps:foreach(Dir, ?MODULE, []),
+    {ok, Res} = deps:foreach(Dir, ?MODULE, [], []),
     UniqRes = lists:foldl(fun({_, _, Val, _, _}, Acc) ->
         lists:umerge(Val, Acc)
     end, [], Res),
@@ -22,7 +22,7 @@ print(Dir) ->
     end, lists:usort(UniqRes)).
 
 create(Dir, Branch, IgnoredApp, Branches1) ->
-    {ok, Res1} = deps:foreach(Dir, ?MODULE, []),
+    {ok, Res1} = deps:foreach(Dir, ?MODULE, [], []),
     Res = lists:usort(Res1),
     {Hashs, Branches} = lists:foldl(fun({App, _, Branch1, Hash, _}, {Acc, Acc2}) ->
         {[{App, Hash} | Acc], [{App, Branch1} | Acc2]}
@@ -96,7 +96,7 @@ deps_modifier({App, VSN, {git, Url, {branch, Branch1}}}, {Acc, Branch}, Hash, Br
 deps_modifier(Dep, {Acc, Branch}, _Hash, _Branches) ->
     {[ Dep | Acc ], Branch}.
 
-do(Dir, App, _VSN, _Source,[]) ->
+do(Dir, App, _VSN, _Source, []) ->
     AppDir = filename:join(Dir, App),
     Cmd = "git --no-pager branch --all",
     Cmd2 = "git --no-pager log -1 --oneline --pretty=tformat:'%h'",

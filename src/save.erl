@@ -17,6 +17,9 @@ save_all(Dir) ->
     {ok, F} = file:open(filename:join(Dir, ?REBAR_SAVE_CFG), [write]),
     io:fwrite(F, "~s~n~n",
         ["%% THIS FILE IS GENERATED. DO NOT EDIT IT MANUALLY %%"]),
+    Cmd = "git --no-pager log --quiet --pretty=format:%h%n --max-count=1",
+    {ok, Res} = updater:cmd(".", Cmd, []),
+    io:fwrite(F, "{~p,~p}.~n", [self_hash,Res]),
     [ io:fwrite(F, "~300p.~n", [Item]) || Item <- NewConf ],
     io:fwrite(F, "~s", ["\n"]),
     file:close(F).

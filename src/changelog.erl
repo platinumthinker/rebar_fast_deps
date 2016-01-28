@@ -46,7 +46,7 @@ create([Dir, Option]) ->
                  	io:format("Error:~p~n", [Reason])
 		end;
         false->
-        io:format("File " ++DirRebarSave++" does not exist~n")
+        exit("File " ++ DirRebarSave ++ " does not exist")
     end,
 	{ok, ListDeps} = case Count of
  		""->
@@ -55,10 +55,19 @@ create([Dir, Option]) ->
 			deps:foreach(Dir, ?MODULE, [], "--max-count="++X)
 	end,
 	lists:foreach(fun write_commits/1, ListDeps),
-	io:format("  * ~s~n", ["Dependences add to project"]),
-    check_table_add(ets:first(?ADD)),
-	io:format("  * ~s~n", ["Dependences deleted from project"]),
-	check_table_delete(ets:first(?MODULE)).
+    case ets:first(?ADD) of
+        '$end_of_table'-> ok;
+         FirstAdd->
+ 	            io:format("  * ~s~n", ["Dependences add to project"]),
+                check_table_add(FirstAdd)
+    end,
+
+    case ets:first(?MODULE) of
+        '$end_of_table'-> ok;
+         FirstDel->
+                io:format("  * ~s~n", ["Dependences deleted from project"]),
+                check_table_delete(FirstDel)
+    end.
 
 write_commits([])->ok;
 write_commits([First|Other])->

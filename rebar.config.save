@@ -1,0 +1,8 @@
+%% THIS FILE IS GENERATED. DO NOT EDIT IT MANUALLY %%
+
+{erl_opts,[warn_as_error]}.
+{escript_emu_args,"%%! -pc unicode\n"}.
+{cover_enabled,true}.
+{cover_print_enabled,true}.
+{cover_export_enabled,true}.
+
