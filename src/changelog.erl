@@ -26,36 +26,36 @@ create([Dir, Option]) ->
 			{"", "rebar.config.save"}
 	end,
 
-	case                                                                        
-    filelib:is_file(DirRebarSave) of                                     
-    	true->                                                              
-        case                                                            
-        	file:consult(DirRebarSave) of                           
-            	{ok, List} ->  
-					ets:new(?MODULE, [duplicate_bag, public, named_table]),     
-		    	  	DepsOld=proplists:get_value(deps, List, "deps"),
+	case
+    filelib:is_file(DirRebarSave) of
+    	true->
+        case
+        	file:consult(DirRebarSave) of
+            	{ok, List} ->
+					ets:new(?MODULE, [duplicate_bag, public, named_table]),
+		    	  	DepsOld=proplists:get_value(deps, List, []),
                 	lists:foreach(
 				 	fun({App , _VSN, {git, _, [Hash]}})->
 						ets:insert(?MODULE, {App, Hash});
 						({App, _VSN,{git, _, {tag, Hash}}})->
 				 		ets:insert(?MODULE, {App,Hash});
-						({App, _VSN,{git, _, Hash}})->                         
-                        ets:insert(?MODULE, {App, Hash}) 
+						({App, _VSN,{git, _, Hash}})->
+                        ets:insert(?MODULE, {App, Hash})
 				 	end, DepsOld);
-                 {error, Reason} ->                                       
-                 	io:format("Error:~p~n", [Reason])            
-		end;                                                            
-        false->                                                             
-        io:format("File " ++DirRebarSave++" does not exist~n")            
-    end,  
-	case Count of
+                 {error, Reason} ->
+                 	io:format("Error:~p~n", [Reason])
+		end;
+        false->
+        io:format("File " ++DirRebarSave++" does not exist~n")
+    end,
+	{ok, ListDeps} = case Count of
  		""->
-			{ok, ListDeps} = deps:foreach(Dir, ?MODULE, [], Count);
+            deps:foreach(Dir, ?MODULE, [], Count);
 		X->
-			{ok, ListDeps} = deps:foreach(Dir, ?MODULE, [], "--max-count="++X)
+			deps:foreach(Dir, ?MODULE, [], "--max-count="++X)
 	end,
 	lists:foreach(fun write_commits/1, ListDeps),
-	io:format("  * ~s~n", ["Dependences add to project"]),              
+	io:format("  * ~s~n", ["Dependences add to project"]),
     check_table_add(ets:first(?ADD)),
 	io:format("  * ~s~n", ["Dependences deleted from project"]),
 	check_table_delete(ets:first(?MODULE)).
@@ -71,49 +71,50 @@ write_commits({App, Commits})->
     write_commits(Commits).% Распечатывается список коммитов для зависимостей
 					       % которые ранее присутствовали в проекте и остались
 						   % на данный момент , но в них были изменения
-	
+
 
 do(Dir, App, _VSN, _Source, Count) ->
     AppDir = filename:join(Dir, App),
-	case ets:lookup(?MODULE, App) of 
+	Res = case ets:lookup(?MODULE, App) of
 		[]->
-			Res=[],
 			ets:delete(?MODULE, App),
-			ets:insert(?ADD,{App, add});
-		[{App,Hash}]-> 
+			ets:insert(?ADD,{App, add}),
+            [];
+		[{App,Hash}]->
 			Cmd="git --no-pager log "++Count++" --pretty=format:\"%s%n\" --reverse "++Hash++"..",
 			%io:format("~s",[Cmd]),
-    		{ok, Res} = updater:cmd(AppDir, Cmd, []),
-			ets:delete(?MODULE, App)
+    		{ok, Res1} = updater:cmd(AppDir, Cmd, []),
+			ets:delete(?MODULE, App),
+            Res1
 	end,
     {accum, App, {App, Res}}.
 
 
-check_table_add('$end_of_table')->                                         
-    ets:delete(?ADD);                                                        
-check_table_add(Key)->                                                     
-    io:format("    - ~p.~n", [Key]),                                         
-    check_table_add(ets:next(?ADD, Key)). % Проверка таблицы на оставшиеся 
+check_table_add('$end_of_table')->
+    ets:delete(?ADD);
+check_table_add(Key)->
+    io:format("    - ~p.~n", [Key]),
+    check_table_add(ets:next(?ADD, Key)). % Проверка таблицы на оставшиеся
 										  % зависимости , они являются убранными
-										  % с текущей сборки.   
+										  % с текущей сборки.
 
 
 check_table_delete('$end_of_table')->
 	ets:delete(?MODULE);
 check_table_delete(Key)->
-	io:format("    - ~p.~n", [Key]),   
+	io:format("    - ~p.~n", [Key]),
 	check_table_delete(ets:next(?MODULE, Key)). % Распечатка таблицы с зависимостями
 										   	    % которые добавились начиная с данной сборки.
-	
+
 get_param(Option)->
 	get_param(Option,[]).
-                                                                                
-get_param([], Res)->                                                           
-    {ok,lists:reverse(Res)};                                                        
-get_param([[$-,$-|A]|[]], _Res)->                                              
-    {error,"Option "++A++" is lost"};                                       
-get_param([[$-,$-|A],[$-,$-|_B]|_T], _Res)->                                     
-    {error,"Option "++A++" is lost"};                                       
-get_param([A,B|T], Res)->                                                      
-    O=re:replace(list_to_binary(A), "--", "", [global,{return, list}]),         
-    get_param(T, [{list_to_atom(O),B}|Res]). %Функция разбора параметров. 
+
+get_param([], Res)->
+    {ok,lists:reverse(Res)};
+get_param([[$-,$-|A]|[]], _Res)->
+    {error,"Option "++A++" is lost"};
+get_param([[$-,$-|A],[$-,$-|_B]|_T], _Res)->
+    {error,"Option "++A++" is lost"};
+get_param([A,B|T], Res)->
+    O=re:replace(list_to_binary(A), "--", "", [global,{return, list}]),
+    get_param(T, [{list_to_atom(O),B}|Res]). %Функция разбора параметров.
