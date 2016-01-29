@@ -43,7 +43,8 @@ show(Dir) ->
 
 do(Dir, App, _VSN, _Source, []) ->
     AppDir = filename:join(Dir, App),
-    Cmd = "git --no-pager log --quiet --pretty=tformat:'%at|||%h|||%an|||%s' --after='~p'",
+    Cmd = "git --no-pager log --quiet --pretty=tformat:'%at|||%h|||%an|||%s' "
+        "--after='~p'",
     {ok, Res} = updater:cmd(AppDir, Cmd, [last_month()]),
 
     case Res of
@@ -53,31 +54,11 @@ do(Dir, App, _VSN, _Source, []) ->
                 [] ->
                     {accum, App, App};
                 _ ->
-                    RegEx = "(.*)\\|\\|\\|(.*)\\|\\|\\|(.*)\\|\\|\\|(.*)",
-                    RegOpt = [{capture, [1, 2, 3, 4], list}, unicode],
-                    RegRes = lists:foldl(
-                               fun(Line, Acc) ->
-                                       case re:run(Line, RegEx, RegOpt) of
-                                           {match, [Time, Hash, Author, Msg]} ->
-                                               [{App, Time, Hash, Author, Msg} | Acc];
-                                           _ ->
-                                               Acc
-                                       end
-                               end, [], Res1),
+                    RegRes = filter_msgs(App, Res),
                     {accum, App, RegRes}
             end;
         _ ->
-            RegEx = "(.*)\\|\\|\\|(.*)\\|\\|\\|(.*)\\|\\|\\|(.*)",
-            RegOpt = [{capture, [1, 2, 3, 4], list}, unicode],
-            RegRes = lists:foldl(
-              fun(Line, Acc) ->
-                      case re:run(Line, RegEx, RegOpt) of
-                          {match, [Time, Hash, Author, Msg]} ->
-                              [{App, Time, Hash, Author, Msg} | Acc];
-                          _ ->
-                              Acc
-                      end
-              end, [], Res),
+            RegRes = filter_msgs(App, Res),
             {accum, App, RegRes}
     end.
 
@@ -100,8 +81,20 @@ last_month() ->
                 NewM when NewM > 0 ->
                     {Y, NewM, calendar:last_day_of_the_month(Y, NewM) + NewD};
                 _NewM ->
-                    {Y - 1, 12, calendar:last_day_of_the_month(Y - 1, 12) + NewD}
+                    {Y - 1, 12,
+                     calendar:last_day_of_the_month(Y - 1, 12) + NewD}
             end
     end.
 
-
+filter_msgs(App, Msgs) ->
+  RegEx = "(.*)\\|\\|\\|(.*)\\|\\|\\|(.*)\\|\\|\\|(.*)",
+  RegOpt = [{capture, [1, 2, 3, 4], list}, unicode],
+  lists:foldl(
+             fun(Line, Acc) ->
+                     case re:run(Line, RegEx, RegOpt) of
+                         {match, [Time, Hash, Author, Msg]} ->
+                             [{App, Time, Hash, Author, Msg} | Acc];
+                         _ ->
+                             Acc
+                     end
+             end, [], Msgs).

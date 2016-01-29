@@ -15,7 +15,9 @@
     {accum, App :: atom(), Res :: any()} |
     {error, App :: atom(), Reason :: string()}.
 
--spec foreach(Dir :: string(), Module :: module(), _Acc, _Args) -> {ok, _Res} | {error, _Reason}.
+-spec foreach(Dir :: string(), Module :: module(),
+              Acc :: any(), Args :: any()) ->
+    {ok, Res :: any()} | {error, Reason :: any()}.
 foreach(Dir, Module, Acc, Args) ->
     foreach(Dir, Module, Acc, Args, false, ?REBAR_CFG).
 foreach(Dir, Module, Acc, Args, RebarCfg) ->
@@ -36,8 +38,8 @@ foreach(Dir, Module, Acc, Args, Delay, RebarCfg) ->
 
 -spec bfs_step(Module :: module(), Dir :: string(),
                DownloadList :: list({_, _, _, _} | {_, _, _} | {_, _}),
-               _AccResult, Delay :: boolean(),
-			   _Args) -> {ok, list()} | none.
+               AccResult :: any(), Delay :: boolean(),
+			   Args :: any()) -> {ok, list()} | none.
 bfs_step(Module, Dir, DepsList, AccResult, Delay,Args) ->
     {Q, ViewedDeps} = lists:foldl(
       fun({App, VSN, Source, [raw]}, {Acc1, Acc2}) ->
@@ -61,9 +63,11 @@ bfs_step(Module, Dir, DepsList, AccResult, Delay,Args) ->
         false ->
             true = erlang:register(?ROOT, self())
     end,
-    bfs_step(Module, Dir, Q, ViewedDeps, DepsList, gb_sets:new(), AccResult, Delay, Args).
+    bfs_step(Module, Dir, Q, ViewedDeps, DepsList, gb_sets:new(),
+             AccResult, Delay, Args).
 
-bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList, AccResult, Delay, Args) ->
+bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList,
+         AccResult, Delay, Args) ->
     CorrectDownList = lists:reverse(lists:foldl(
       fun(A = {App, VSN, Source}, Acc) ->
                spawn(
@@ -113,15 +117,16 @@ bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList, AccResult
 
     Size1 = gb_sets:size(DownL),
     Size2 = gb_sets:size(DownloadedList),
-    (Size1 - 5 > Size2) andalso Delay andalso ?CONSOLE("Prepare ~p deps", [Size1]),
+    (Size1 - 5 > Size2) andalso Delay
+        andalso ?CONSOLE("Prepare ~p deps", [Size1]),
 
     case queue:out(Queue) of
         {{value, {App, _Vsn, _Source}}, Q} ->
             AppDir = filename:join([Dir, App, ?REBAR_CFG]),
             Child = try
                 case file:consult(AppDir) of
-                            {ok,    Config} -> proplists:get_value(deps, Config, []);
-                            {error, enoent} -> []
+                    {ok,    Config} -> proplists:get_value(deps, Config, []);
+                    {error, enoent} -> []
                 end
             catch
                 _:E ->

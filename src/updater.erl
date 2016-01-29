@@ -16,8 +16,8 @@
 update_all(Dir, RebarCfg) ->
     deps:foreach(Dir, ?MODULE, ok, [], RebarCfg).
 
-do(Dir, App, _VSN, Source, []) ->
-    do(Dir, App, _VSN, Source, [], false).
+do(Dir, App, VSN, Source, []) ->
+    do(Dir, App, VSN, Source, [], false).
 do(Dir, App, _VSN, Source, [], _IsVerbose) ->
     AppDir = filename:join(Dir, App),
     try
