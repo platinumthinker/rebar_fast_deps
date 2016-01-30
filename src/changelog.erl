@@ -4,7 +4,7 @@
 -export([
          create/1,
          do/5,
-		 write_commits/1
+         write_commits/1
         ]).
 
 
@@ -33,17 +33,22 @@ create([Dir, Option]) ->
         	file:consult(DirRebarSave) of
             	{ok, List} ->
 					ets:new(?MODULE, [duplicate_bag, public, named_table]),
-		    	  	DepsOld=proplists:get_value(deps, List, []),
+                    SelfHash = proplists:get_value(self_hash, List, []),
+                    Cmd="git --no-pager log " ++ Count ++ " --pretty=format:\"%s%n\" --reverse "++ SelfHash ++ "..",
+                    {ok, Res1} = updater:cmd(Dir, Cmd, []),
+                    {ok, [{application, ReleaseName, _}]}=file:consult(filelib:wildcard("src/*.app.src")),
+                    write_commits({ReleaseName, Res1}),
+		    	  	DepsOld = proplists:get_value(deps, List, []),
                 	lists:foreach(
-				 	fun({App , _VSN, {git, _, [Hash]}})->
-						ets:insert(?MODULE, {App, Hash});
-						({App, _VSN,{git, _, {tag, Hash}}})->
-				 		ets:insert(?MODULE, {App,Hash});
-						({App, _VSN,{git, _, Hash}})->
-                        ets:insert(?MODULE, {App, Hash})
-				 	end, DepsOld);
+				                fun({App , _VSN, {git, _, [Hash]}})->
+						         ets:insert(?MODULE, {App, Hash});
+						        ({App, _VSN, {git, _, {tag, Hash}}})->
+				 		         ets:insert(?MODULE, {App, Hash});
+						        ({App, _VSN, {git, _, Hash}})->
+                                 ets:insert(?MODULE, {App, Hash})
+				 	            end, DepsOld);
                  {error, Reason} ->
-                 	io:format("Error:~p~n", [Reason])
+                    exit("Error: " ++ Reason)
 		end;
         false->
         exit("File " ++ DirRebarSave ++ " does not exist")
@@ -52,7 +57,7 @@ create([Dir, Option]) ->
  		""->
             deps:foreach(Dir, ?MODULE, [], Count);
 		X->
-			deps:foreach(Dir, ?MODULE, [], "--max-count="++X)
+			deps:foreach(Dir, ?MODULE, [], "--max-count=" ++ X)
 	end,
 	lists:foreach(fun write_commits/1, ListDeps),
     case ets:first(?ADD) of
@@ -87,10 +92,10 @@ do(Dir, App, _VSN, _Source, Count) ->
 	Res = case ets:lookup(?MODULE, App) of
 		[]->
 			ets:delete(?MODULE, App),
-			ets:insert(?ADD,{App, add}),
+			ets:insert(?ADD, {App, add}),
             [];
-		[{App,Hash}]->
-			Cmd="git --no-pager log "++Count++" --pretty=format:\"%s%n\" --reverse "++Hash++"..",
+		[{App, Hash}]->
+			Cmd="git --no-pager log " ++ Count ++ " --pretty=format:\"%s%n\" --reverse " ++ Hash ++ "..",
 			%io:format("~s",[Cmd]),
     		{ok, Res1} = updater:cmd(AppDir, Cmd, []),
 			ets:delete(?MODULE, App),
@@ -116,14 +121,14 @@ check_table_delete(Key)->
 										   	    % которые добавились начиная с данной сборки.
 
 get_param(Option)->
-	get_param(Option,[]).
+	get_param(Option, []).
 
 get_param([], Res)->
-    {ok,lists:reverse(Res)};
-get_param([[$-,$-|A]|[]], _Res)->
-    {error,"Option "++A++" is lost"};
-get_param([[$-,$-|A],[$-,$-|_B]|_T], _Res)->
-    {error,"Option "++A++" is lost"};
-get_param([A,B|T], Res)->
-    O=re:replace(list_to_binary(A), "--", "", [global,{return, list}]),
-    get_param(T, [{list_to_atom(O),B}|Res]). %Функция разбора параметров.
+    {ok, lists:reverse(Res)};
+get_param([[$-, $-|A]|[]], _Res)->
+    {error, "Option " ++ A ++ " is lost"};
+get_param([[$-, $-|A], [$-, $-|_B]|_T], _Res)->
+    {error, "Option " ++ A ++ " is lost"};
+get_param([A, B|T], Res)->
+    O=re:replace(list_to_binary(A), "--", "", [global, {return, list}]),
+    get_param(T, [{list_to_atom(O), B}|Res]). %Функция разбора параметров.
