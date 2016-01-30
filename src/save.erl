@@ -12,7 +12,8 @@
 save_all(Dir) ->
     {ok, Deps} = deps:foreach(Dir, ?MODULE, [], []),
     {ok, Conf} = file:consult(filename:join(Dir, ?REBAR_CFG)),
-    NewDeps = lists:reverse(lists:foldl(fun deps_modifier/2, [], lists:sort(Deps))),
+    NewDeps = lists:reverse(
+                lists:foldl(fun deps_modifier/2, [], lists:sort(Deps))),
     NewConf = lists:keyreplace(deps, 1, Conf, {deps, NewDeps}),
     {ok, F} = file:open(filename:join(Dir, ?REBAR_SAVE_CFG), [write]),
     io:fwrite(F, "~s~n~n",

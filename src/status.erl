@@ -7,7 +7,7 @@
 
 -include("rebar.hrl").
 
--spec status(Dir :: string()) -> ok | error.
+-spec status(Dir :: string()) -> {ok | error, _Reason}.
 status(Dir) ->
     deps:foreach(Dir, ?MODULE, ok, []).
 

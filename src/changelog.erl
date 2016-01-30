@@ -7,11 +7,11 @@
          write_commits/1
         ]).
 
-
-
 -include("rebar.hrl").
 -define(ADD, addDeps).
--spec create(Dir :: string()) -> ok | error.
+
+-spec create([string()]) -> ok | error.
+
 create([Dir, Option]) ->
 	ets:new(?ADD, [duplicate_bag, public, named_table]),
 
@@ -51,10 +51,10 @@ create([Dir, Option]) ->
                     exit("Error: " ++ Reason)
 		end;
         false->
-        exit("File " ++ DirRebarSave ++ " does not exist")
+            exit("File " ++ DirRebarSave ++ " does not exist")
     end,
-	{ok, ListDeps} = case Count of
- 		""->
+    {ok, ListDeps} = case Count of
+        ""->
             deps:foreach(Dir, ?MODULE, [], Count);
 		X->
 			deps:foreach(Dir, ?MODULE, [], "--max-count=" ++ X)
@@ -62,29 +62,29 @@ create([Dir, Option]) ->
 	lists:foreach(fun write_commits/1, ListDeps),
     case ets:first(?ADD) of
         '$end_of_table'-> ok;
-         FirstAdd->
- 	            io:format("  * ~s~n", ["Dependences add to project"]),
-                check_table_add(FirstAdd)
+        FirstAdd->
+            io:format("  * ~s~n", ["Dependences add to project"]),
+            check_table_add(FirstAdd)
     end,
 
     case ets:first(?MODULE) of
         '$end_of_table'-> ok;
-         FirstDel->
-                io:format("  * ~s~n", ["Dependences deleted from project"]),
-                check_table_delete(FirstDel)
+        FirstDel->
+            io:format("  * ~s~n", ["Dependences deleted from project"]),
+            check_table_delete(FirstDel)
     end.
 
 write_commits([])->ok;
 write_commits([First|Other])->
-	io:format("    - ~s~n", [First]),
-	write_commits(Other);
+    io:format("    - ~s~n", [First]),
+    write_commits(Other);
 
 write_commits({_, []})->ok;
 write_commits({App, Commits})->
     io:format("  * ~p.~n", [App]),
     write_commits(Commits).% Распечатывается список коммитов для зависимостей
-					       % которые ранее присутствовали в проекте и остались
-						   % на данный момент , но в них были изменения
+% которые ранее присутствовали в проекте и остались
+% на данный момент , но в них были изменения
 
 
 do(Dir, App, _VSN, _Source, Count) ->
@@ -100,7 +100,7 @@ do(Dir, App, _VSN, _Source, Count) ->
     		{ok, Res1} = updater:cmd(AppDir, Cmd, []),
 			ets:delete(?MODULE, App),
             Res1
-	end,
+    end,
     {accum, App, {App, Res}}.
 
 
@@ -109,16 +109,17 @@ check_table_add('$end_of_table')->
 check_table_add(Key)->
     io:format("    - ~p.~n", [Key]),
     check_table_add(ets:next(?ADD, Key)). % Проверка таблицы на оставшиеся
-										  % зависимости , они являются убранными
-										  % с текущей сборки.
+% зависимости , они являются убранными
+% с текущей сборки.
 
 
 check_table_delete('$end_of_table')->
-	ets:delete(?MODULE);
+    ets:delete(?MODULE),
+    ok;
 check_table_delete(Key)->
-	io:format("    - ~p.~n", [Key]),
-	check_table_delete(ets:next(?MODULE, Key)). % Распечатка таблицы с зависимостями
-										   	    % которые добавились начиная с данной сборки.
+    io:format("    - ~p.~n", [Key]),
+    check_table_delete(ets:next(?MODULE, Key)). % Распечатка таблицы с зависимостями
+% которые добавились начиная с данной сборки.
 
 get_param(Option)->
 	get_param(Option, []).

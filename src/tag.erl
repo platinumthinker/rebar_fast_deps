@@ -3,6 +3,7 @@
 
 -export([
          print/1,
+         create/2,
          create/3,
          do/5
         ]).
@@ -18,6 +19,7 @@ print(Dir) ->
         ?CONSOLE("~s", [Val])
     end, UniqRes).
 
+create(Dir, Tag) -> create(Dir, Tag, []).
 create(Dir, Tag, IgnoredApp) ->
     {ok, Res} = deps:foreach(Dir, ?MODULE, [], []),
     Cmd = "git tag ~s && git push origin ~s",

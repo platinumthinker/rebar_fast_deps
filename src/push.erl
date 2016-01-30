@@ -7,6 +7,9 @@
 
 -include("rebar.hrl").
 
+-define(PUSH_FMT, "Push \e[32m~p\e[0m in origin/\e[32m~s\e[0m").
+-define(DETACH_FMT, "Detached \e[31m~p\e[0m ~p").
+
 -spec all(Dir :: string()) -> ok | error.
 all(Dir) ->
     {ok, Changes} = deps:foreach(Dir, ?MODULE, [],[]),
@@ -15,12 +18,12 @@ all(Dir) ->
               Cmd1 = "git rev-parse --abbrev-ref HEAD",
               case updater:cmd(AppDir, Cmd1, []) of
                   {ok, ["HEAD"]} ->
-                      ?CONSOLE("Detached \e[31m~p\e[0m ~p", [App, Status]);
+                      ?CONSOLE(?DETACH_FMT, [App, Status]);
                   {ok, [Out]} ->
                       Cmd = "git push origin ~s",
                       case updater:cmd(AppDir, Cmd, Out) of
                           {ok, _} ->
-                              ?CONSOLE("Push \e[32m~p\e[0m in origin/\e[32m~s\e[0m", [App, Out]);
+                              ?CONSOLE(?PUSH_FMT, [App, Out]);
                           A ->
                               ?CONSOLE("\e[31mError:\e[0m ~p", [A])
                       end
