@@ -37,6 +37,10 @@ do(Dir, App, _VSN, Source, [], _IsVerbose) ->
             {error, App, Reason}
     end.
 
+update_source(AppDir, {git, Url, [raw]}) ->
+    update_source(AppDir, {git, Url, {branch, "master"}});
+update_source(AppDir, {git, Url, {branch, Branch}, [raw]}) ->
+    update_source(AppDir, {git, Url, {branch, Branch}});
 update_source(AppDir, {git, Url}) ->
     update_source(AppDir, {git, Url, {branch, "master"}});
 update_source(AppDir, {git, Url, ""}) ->
@@ -56,6 +60,10 @@ update_source(AppDir, {git, _Url, Refspec}) ->
     Line.
 
 download_source(AppDir, {git, Url}) ->
+    download_source(AppDir, {git, Url, {branch, "master"}});
+download_source(AppDir, {git, Url, {branch, Branch}, [raw]}) ->
+    download_source(AppDir, {git, Url, {branch, Branch}});
+download_source(AppDir, {git, Url, [raw]}) ->
     download_source(AppDir, {git, Url, {branch, "master"}});
 download_source(AppDir, {git, Url, ""}) ->
     download_source(AppDir, {git, Url, {branch, "master"}});

@@ -165,6 +165,8 @@ bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList,
                      end, {Q, ViewedDeps, []}, Child),
             bfs_step(Module, Dir, NewQ, NewS, DownloadL, DownL,
                      NewAccResult, Delay, Args);
+        {{value, _}, _} ->
+            {ok, NewAccResult};
         {empty, _} ->
             {ok, NewAccResult}
     end.
