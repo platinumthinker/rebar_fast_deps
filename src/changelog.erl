@@ -14,7 +14,6 @@
 
 create([Dir, Option]) ->
 	ets:new(?ADD, [duplicate_bag, public, named_table]),
-
 	{Count, DirRebarSave} = case get_param(Option) of
 		{ok, OptionList}->
 			{
@@ -25,7 +24,6 @@ create([Dir, Option]) ->
 			io:format("~s~n", [ReasonErr]),
 			{"", "rebar.config.save"}
 	end,
-
 	case
     filelib:is_file(DirRebarSave) of
     	true->
@@ -33,20 +31,24 @@ create([Dir, Option]) ->
         	file:consult(DirRebarSave) of
             	{ok, List} ->
 					ets:new(?MODULE, [duplicate_bag, public, named_table]),
-                    SelfHash = proplists:get_value(self_hash, List, []),
-                    Cmd="git --no-pager log " ++ Count ++ " --pretty=format:\"%s%n\" --reverse "++ SelfHash ++ "..",
+                    SelfHash=proplists:get_value(self_hash, List, ""),
+					Cmd=form_cmd(SelfHash,Count),
                     {ok, Res1} = updater:cmd(Dir, Cmd, []),
-                    {ok, [{application, ReleaseName, _}]}=file:consult(filelib:wildcard("src/*.app.src")),
+                    {ok, [{application, ReleaseName, _}]}=
+								file:consult(filelib:wildcard("src/*.app.src")),
                     write_commits({ReleaseName, Res1}),
 		    	  	DepsOld = proplists:get_value(deps, List, []),
                 	lists:foreach(
 				                fun({App , _VSN, {git, _, [Hash]}})->
-						         ets:insert(?MODULE, {App, Hash});
-						        ({App, _VSN, {git, _, {tag, Hash}}})->
-				 		         ets:insert(?MODULE, {App, Hash});
-						        ({App, _VSN, {git, _, Hash}})->
-                                 ets:insert(?MODULE, {App, Hash})
+										ets:insert(?MODULE, {App, Hash});
+
+									({App, _VSN, {git, _, {tag, Hash}}})->
+										ets:insert(?MODULE, {App, Hash});
+
+									({App, _VSN, {git, _, Hash}})->
+										ets:insert(?MODULE, {App, Hash})
 				 	            end, DepsOld);
+
                  {error, Reason} ->
                     exit("Error: " ++ Reason)
 		end;
@@ -68,15 +70,20 @@ create([Dir, Option]) ->
     end,
 
     case ets:first(?MODULE) of
-        '$end_of_table'-> ok;
-        FirstDel->
+		'$end_of_table'-> ok;
+
+		FirstDel->
             io:format("  * ~s~n", ["Dependences deleted from project"]),
             check_table_delete(FirstDel)
-    end.
+    end,
+	io:format("~n").
+
+
+
 
 write_commits([])->ok;
 write_commits([First|Other])->
-    io:format("    - ~s~n", [First]),
+    io:format("    - ~ts~n", [unicode:characters_to_list(list_to_binary(First))]),
     write_commits(Other);
 
 write_commits({_, []})->ok;
@@ -133,3 +140,22 @@ get_param([[$-, $-|A], [$-, $-|_B]|_T], _Res)->
 get_param([A, B|T], Res)->
     O=re:replace(list_to_binary(A), "--", "", [global, {return, list}]),
     get_param(T, [{list_to_atom(O), B}|Res]). %Функция разбора параметров.
+
+
+
+form_cmd("",Count)->
+Cmd=case Count of
+        "" ->
+            "git --no-pager log " ++ Count ++ " --pretty=format:\"%s%n\" --reverse";
+        Y->
+            "git --no-pager log --max-count=" ++ Count ++ " --pretty=format:\"%s%n\" --reverse"
+    end,
+Cmd;
+form_cmd(SelfHash,Count)->
+Cmd=case Count of
+		"" ->
+			"git --no-pager log " ++ Count ++ " --pretty=format:\"%s%n\" --reverse " ++ SelfHash ++ "..";
+        Y->
+            "git --no-pager log --max-count=" ++ Count ++ " --pretty=format:\"%s%n\" --reverse " ++ SelfHash ++ ".."
+	end,
+Cmd.
