@@ -78,29 +78,49 @@ change_deps(Deps, Conf, Name, Branch, AppDir) ->
   Cmd1 = "git commit -am 'Create release branches ~s'",
   updater:cmd(AppDir, Cmd1, [Branch]).
 
-deps_modifier({App, VSN, {git, Url}}, Acc, Hash, Branches) ->
-    GitDef = {git, Url, {branch, "HEAD"}},
-    deps_modifier({App, VSN, GitDef}, Acc, Hash, Branches);
-deps_modifier({App, VSN, {git, Url, ""}}, Acc, Hash, Branches) ->
-    GitDef = {git, Url, {branch, "HEAD"}},
-    deps_modifier({App, VSN, GitDef}, Acc, Hash, Branches);
-deps_modifier({App, VSN, {git, Url, {branch, "master"}}},
-              Acc, Hash, Branches) ->
-    Git = {git, Url, {branch, "HEAD"}},
-    deps_modifier({App, VSN, Git}, Acc, Hash, Branches);
+deps_modifier({App, VSN, {git, Url}}, {Acc, Branch}, Hash, Branches) ->
+    GitDef = {git, Url, {branch, "HEAD"}, []},
+    deps_modifier({App, VSN, GitDef}, {Acc, Branch}, Hash, Branches);
 deps_modifier({App, VSN, {git, Url, {branch, Branch1}}},
               {Acc, Branch}, Hash, Branches) ->
+    GitDef = {git, Url, {branch, Branch1}, []},
+    deps_modifier({App, VSN, GitDef}, {Acc, Branch}, Hash, Branches);
+deps_modifier(Dep = {_App, _VSN, {git, _Url, {tag, _Tag}}},
+              {Acc, Branch}, _Hash, _Branches) ->
+    {[ Dep | Acc ], Branch};
+deps_modifier({App, VSN, {git, Url, Opts = [raw]}}, Acc, Hash, Branches) ->
+    GitDef = {git, Url, {branch, "HEAD"}, Opts},
+    deps_modifier({App, VSN, GitDef}, Acc, Hash, Branches);
+deps_modifier({App, VSN, {git, Url, ""}, Opts = [raw]}, Acc, Hash, Branches) ->
+    GitDef = {git, Url, {branch, "HEAD"}, Opts},
+    deps_modifier({App, VSN, GitDef}, Acc, Hash, Branches);
+deps_modifier({App, VSN, {git, Url, {branch, "master"}, Opts = [raw]}},
+              Acc, Hash, Branches) ->
+    Git = {git, Url, {branch, "HEAD"}, Opts},
+    deps_modifier({App, VSN, Git}, Acc, Hash, Branches);
+deps_modifier({App, VSN, {git, Url, {branch, Branch1}, Opts}},
+              {Acc, Branch}, Hash, Branches) ->
+    Git = case is_list(Opts) andalso lists:member(raw, Opts) of
+        true  -> {git, Url, Hash, [raw]};
+        false -> {git, Url, Hash}
+    end,
     case re:run(Url, "(.*):external(.*)") of
         nomatch ->
             case lists:member(Branch1, Branches ++ ["HEAD"]) of
                 true ->
-                    Git = {git, Url, {branch, Branch}},
-                    {[ {App, VSN, Git} | Acc ], Branch};
+                    case lists:member(raw, Opts) of
+                        true ->
+                            Git1 = {git, Url, {branch, Branch}, [raw]},
+                            {[ {App, VSN, Git1} | Acc ], Branch};
+                        false ->
+                            Git1 = {git, Url, {branch, Branch}},
+                            {[ {App, VSN, Git1} | Acc ], Branch}
+                    end;
                 false ->
-                    {[ {App, VSN, {git, Url, Hash}} | Acc ], Branch}
+                    {[ {App, VSN, Git} | Acc ], Branch}
             end;
         {match, _} ->
-            {[ {App, VSN, {git, Url, Hash}} | Acc ], Branch}
+            {[ {App, VSN, Git} | Acc ], Branch}
     end;
 deps_modifier(Dep, {Acc, Branch}, _Hash, _Branches) ->
     {[ Dep | Acc ], Branch}.
