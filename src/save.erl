@@ -27,7 +27,13 @@ save_all(Dir) ->
 
 deps_modifier({App, VSN, {git, Url}, Hash}, Acc) ->
     deps_modifier({App, VSN, {lock, Url}, Hash}, Acc);
+deps_modifier({App, VSN, {git, Url, [raw]}, Hash}, Acc) ->
+    deps_modifier({App, VSN, {lock, Url}, Hash}, Acc);
 deps_modifier({App, VSN, {git, Url, {branch, _}}, Hash}, Acc) ->
+    deps_modifier({App, VSN, {lock, Url}, Hash}, Acc);
+deps_modifier({App, VSN, {git, Url, {branch, _}, [raw]}, Hash}, Acc) ->
+    deps_modifier({App, VSN, {lock, Url}, Hash}, Acc);
+deps_modifier({App, VSN, {git, Url, "", [raw]}, Hash}, Acc) ->
     deps_modifier({App, VSN, {lock, Url}, Hash}, Acc);
 deps_modifier({App, VSN, {git, Url, "", Hash}}, Acc) ->
     deps_modifier({App, VSN, {lock, Url}, Hash}, Acc);
