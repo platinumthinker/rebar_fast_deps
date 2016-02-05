@@ -75,8 +75,7 @@ create([Dir, Option]) ->
 		FirstDel->
             io:format("  * ~s~n", ["Dependences deleted from project"]),
             check_table_delete(FirstDel)
-    end,
-	io:format("~n").
+    end.
 
 
 
