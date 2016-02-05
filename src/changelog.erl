@@ -39,9 +39,7 @@ create([Dir, Option]) ->
                     write_commits({ReleaseName, Res1}),
 		    	  	DepsOld = proplists:get_value(deps, List, []),
                 	lists:foreach(
-				                fun({App , _VSN, {git, _, [raw]}})-> ok;
-
-									({App , _VSN, {git, _, [Hash]}})->
+				                fun({App , _VSN, {git, _, [Hash]}})->
 										ets:insert(?MODULE, {App, Hash});
 
 									({App, _VSN, {git, _, {tag, Hash}}})->
@@ -102,6 +100,9 @@ do(Dir, App, _VSN, _Source, Count) ->
 			ets:delete(?MODULE, App),
 			ets:insert(?ADD, {App, add}),
             [];
+		[{App,raw}]->
+			ets:delete(?MODULE, App),
+			[];
 		[{App, Hash}]->
 			Cmd="git --no-pager log " ++ Count ++ " --pretty=format:\"%s%n\" --reverse " ++ Hash ++ "..",
 			%io:format("~s",[Cmd]),
