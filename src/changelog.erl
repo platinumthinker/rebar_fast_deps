@@ -34,12 +34,18 @@ create([Dir, Option]) ->
                     SelfHash=proplists:get_value(self_hash, List, ""),
 					Cmd=form_cmd(SelfHash,Count),
                     {ok, Res1} = updater:cmd(Dir, Cmd, []),
-                    {ok, [{application, ReleaseName, _}]}=
-								file:consult(filelib:wildcard("src/*.app.src")),
-                    write_commits({ReleaseName, Res1}),
+                    try
+                        {ok, [{application, ReleaseName, _}]} =
+                            file:consult(filelib:wildcard("src/*.app.src")),
+                        write_commits({ReleaseName, Res1})
+                    catch
+                        _:_ -> ok
+                    end,
 		    	  	DepsOld = proplists:get_value(deps, List, []),
                 	lists:foreach(
-				                fun({App , _VSN, {git, _, [Hash]}})->
+				                fun({_App , _VSN, {git, _, [raw]}})-> ok;
+
+									({App , _VSN, {git, _, [Hash]}})->
 										ets:insert(?MODULE, {App, Hash});
 
 									({App, _VSN, {git, _, {tag, Hash}}})->
@@ -149,7 +155,7 @@ form_cmd("",Count)->
 Cmd=case Count of
         "" ->
             "git --no-pager log " ++ Count ++ " --pretty=format:\"%s%n\" --reverse";
-        Y->
+        _Y->
             "git --no-pager log --max-count=" ++ Count ++ " --pretty=format:\"%s%n\" --reverse"
     end,
 Cmd;
@@ -157,7 +163,7 @@ form_cmd(SelfHash,Count)->
 Cmd=case Count of
 		"" ->
 			"git --no-pager log " ++ Count ++ " --pretty=format:\"%s%n\" --reverse " ++ SelfHash ++ "..";
-        Y->
+        _Y->
             "git --no-pager log --max-count=" ++ Count ++ " --pretty=format:\"%s%n\" --reverse " ++ SelfHash ++ ".."
 	end,
 Cmd.
