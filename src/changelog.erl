@@ -44,6 +44,7 @@ create([Dir, Option]) ->
 		    	  	DepsOld = proplists:get_value(deps, List, []),
                 	lists:foreach(
 				                fun({_App , _VSN, {git, _, [raw]}})-> ok;
+				                   ({_App , _VSN, {git, _, _, [raw]}})-> ok;
 
 									({App , _VSN, {git, _, [Hash]}})->
 										ets:insert(?MODULE, {App, Hash});
