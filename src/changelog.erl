@@ -13,6 +13,7 @@
 -spec create([string()]) -> ok | error.
 
 create([Dir, Option]) ->
+    try
 	ets:new(?ADD, [duplicate_bag, public, named_table]),
 	{Count, DirRebarSave} = case get_param(Option) of
 		{ok, OptionList}->
@@ -82,22 +83,27 @@ create([Dir, Option]) ->
 		FirstDel->
             io:format("  * ~s~n", ["Dependences deleted from project"]),
             check_table_delete(FirstDel)
+    end
+    catch
+        E:A ->
+            io:format("Error ~p:~p, ~p~n", [E, A, erlang:get_stacktrace()])
     end.
 
 
 
 
-write_commits([])->ok;
+write_commits([]) -> ok;
 write_commits([First|Other])->
     io:format("    - ~ts~n", [unicode:characters_to_list(list_to_binary(First))]),
     write_commits(Other);
 
-write_commits({_, []})->ok;
+write_commits({_, []}) -> ok;
 write_commits({App, Commits})->
     io:format("  * ~p.~n", [App]),
-    write_commits(Commits).% Распечатывается список коммитов для зависимостей
+% Распечатывается список коммитов для зависимостей
 % которые ранее присутствовали в проекте и остались
 % на данный момент , но в них были изменения
+    write_commits(Commits).
 
 
 do(Dir, App, _VSN, _Source, Count) ->
@@ -111,11 +117,14 @@ do(Dir, App, _VSN, _Source, Count) ->
 			ets:delete(?MODULE, App),
 			[];
 		[{App, Hash}]->
-			Cmd="git --no-pager log " ++ Count ++ " --pretty=format:\"%s%n\" --reverse " ++ Hash ++ "..",
-			%io:format("~s",[Cmd]),
-    		{ok, Res1} = updater:cmd(AppDir, Cmd, []),
+			Cmd = "git --no-pager log ~s --pretty=format:\"%s%n\" --reverse ~s..",
+			io:format("App:~p => ~s ~p~n", [App, Cmd, Count]),
+    		Res2 = case updater:cmd(AppDir, Cmd, [Count, Hash]) of
+                {ok, Res1} -> Res1;
+                _ -> ""
+            end,
 			ets:delete(?MODULE, App),
-            Res1
+            Res2
     end,
     {accum, App, {App, Res}}.
 
@@ -124,9 +133,10 @@ check_table_add('$end_of_table')->
     ets:delete(?ADD);
 check_table_add(Key)->
     io:format("    - ~p.~n", [Key]),
-    check_table_add(ets:next(?ADD, Key)). % Проверка таблицы на оставшиеся
+% Проверка таблицы на оставшиеся
 % зависимости , они являются убранными
 % с текущей сборки.
+    check_table_add(ets:next(?ADD, Key)).
 
 
 check_table_delete('$end_of_table')->
@@ -134,8 +144,9 @@ check_table_delete('$end_of_table')->
     ok;
 check_table_delete(Key)->
     io:format("    - ~p.~n", [Key]),
-    check_table_delete(ets:next(?MODULE, Key)). % Распечатка таблицы с зависимостями
+% Распечатка таблицы с зависимостями
 % которые добавились начиная с данной сборки.
+    check_table_delete(ets:next(?MODULE, Key)).
 
 get_param(Option)->
 	get_param(Option, []).
@@ -147,7 +158,7 @@ get_param([[$-, $-|A]|[]], _Res)->
 get_param([[$-, $-|A], [$-, $-|_B]|_T], _Res)->
     {error, "Option " ++ A ++ " is lost"};
 get_param([A, B|T], Res)->
-    O=re:replace(list_to_binary(A), "--", "", [global, {return, list}]),
+    O = re:replace(list_to_binary(A), "--", "", [global, {return, list}]),
     get_param(T, [{list_to_atom(O), B}|Res]). %Функция разбора параметров.
 
 
