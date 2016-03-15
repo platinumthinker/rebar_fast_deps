@@ -113,12 +113,11 @@ do(Dir, App, _VSN, _Source, Count) ->
 			ets:delete(?MODULE, App),
 			ets:insert(?ADD, {App, add}),
             [];
-		[{App,raw}]->
+		[{App, raw}]->
 			ets:delete(?MODULE, App),
 			[];
 		[{App, Hash}]->
 			Cmd = "git --no-pager log ~s --pretty=format:\"%s%n\" --reverse ~s..",
-			io:format("App:~p => ~s ~p~n", [App, Cmd, Count]),
     		Res2 = case updater:cmd(AppDir, Cmd, [Count, Hash]) of
                 {ok, Res1} -> Res1;
                 _ -> ""
