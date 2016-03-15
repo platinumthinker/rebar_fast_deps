@@ -34,13 +34,13 @@ foreach(Dir, Module, Acc, Args, Delay, RebarCfg) ->
         {error, enoent} -> {"deps", []}
     end,
     DepsFolder = filename:join(Dir, DepsFldr),
-    bfs_step(Module, DepsFolder, DepsList, Acc, Delay,Args).
+    bfs_step(Module, DepsFolder, DepsList, Acc, Delay, Args).
 
 -spec bfs_step(Module :: module(), Dir :: string(),
                DownloadList :: list({_, _, _, _} | {_, _, _} | {_, _}),
                AccResult :: any(), Delay :: boolean(),
 			   Args :: any()) -> {ok, list()} | none.
-bfs_step(Module, Dir, DepsList, AccResult, Delay,Args) ->
+bfs_step(Module, Dir, DepsList, AccResult, Delay, Args) ->
     {Q, ViewedDeps} = lists:foldl(
       fun({App, VSN, Source, [raw]}, {Acc1, Acc2}) ->
               {

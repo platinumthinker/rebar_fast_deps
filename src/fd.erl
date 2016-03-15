@@ -13,7 +13,7 @@ main(Args) ->
 
 main_vrap([A|B]) when A == "change"; A == "ch" ->
 	{ok, Dir} = file:get_cwd(),
-    changelog:create([Dir,B]);
+    changelog:create([Dir, B]);
 
 
 main_vrap([Command]) ->

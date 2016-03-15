@@ -94,7 +94,7 @@ cmd(Dir, Str, Args) ->
     catch
         Err ->
             io:format("Error ~p~n"
-                      "Stacktrace: ~stack", [Err, erlang:get_stacktrace()]),
+                      "Stacktrace: ~p", [Err, erlang:get_stacktrace()]),
             erlang:halt(Err)
     end.
 
@@ -126,4 +126,5 @@ cmd_loop(Port, Acc) ->
     end.
 %Вырезвает все пустые строки.
 replace_eol(Line) ->
-    [ binary_to_list(L) || L <- re:split(Line, "\\n",[unicode, {return, binary}]), L =/= <<>>] .
+    [ binary_to_list(L) ||
+      L <- re:split(Line, "\\n", [unicode, {return, binary}]), L =/= <<>>] .
