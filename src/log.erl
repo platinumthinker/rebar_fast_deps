@@ -44,7 +44,11 @@ show(Dir) ->
 do(Dir, App, _VSN, _Source, []) ->
     AppDir = filename:join(Dir, App),
     Cmd = "git --no-pager log --quiet --pretty=tformat:'%at|||%h|||%an|||%s'",
-    {ok, Res} = updater:cmd(AppDir, Cmd, []),
+    Res = case updater:cmd(AppDir, Cmd, []) of
+        {ok, Res2} -> Res2;
+        Error -> ?ERROR("Error ~p ~p => ~p", [Dir, App, Error]),
+                 ?FAIL
+    end,
 
     case Res of
         [] ->
