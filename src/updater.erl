@@ -102,7 +102,8 @@ cmd(Dir, Str, Args, Retry) ->
     Port = erlang:open_port({spawn, ?FMT(Str, Args)}, [{cd, Dir}, exit_status,
                 {line, 100}, hide, stderr_to_stdout, binary]),
     case cmd_loop(Port, <<>>) of
-        {ok, Output} -> {ok, Output};
+        {ok, Output} ->
+            {ok, Output};
         {error, Reason} ->
             if Retry + 1 > ?RETRY ->
                    {error, Reason};

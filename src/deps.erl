@@ -112,7 +112,8 @@ bfs_step(Module, Dir, Queue, ViewedDeps, DownloadList, DownloadedList,
               after ?TIMEOUT ->
                     exit("Timeout when update dep")
               end;
-         (_, Acc) -> Acc
+         (_, Acc) ->
+              Acc
       end, {DownloadedList, AccResult}, CorrectDownList),
 
     Size1 = gb_sets:size(DownL),

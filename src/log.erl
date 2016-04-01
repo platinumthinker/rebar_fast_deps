@@ -43,13 +43,12 @@ show(Dir) ->
 
 do(Dir, App, _VSN, _Source, []) ->
     AppDir = filename:join(Dir, App),
-    Cmd = "git --no-pager log --quiet --pretty=tformat:'%at|||%h|||%an|||%s' "
-        "--after='~p'",
-    {ok, Res} = updater:cmd(AppDir, Cmd, [last_month()]),
+    Cmd = "git --no-pager log --quiet --pretty=tformat:'%at|||%h|||%an|||%s'",
+    {ok, Res} = updater:cmd(AppDir, Cmd, []),
 
     case Res of
         [] ->
-            {ok, Res1} = updater:cmd(AppDir, Cmd, [three_month()]),
+            {ok, Res1} = updater:cmd(AppDir, Cmd, []),
             case Res1 of
                 [] ->
                     {accum, App, App};
@@ -62,29 +61,29 @@ do(Dir, App, _VSN, _Source, []) ->
             {accum, App, RegRes}
     end.
 
-three_month() ->
-    {{Y, M, D}, _} = calendar:local_time(),
-    case M - 3 of
-        NewM when NewM > 0 ->
-            {Y, NewM, D};
-        _NewM ->
-            {Y - 1, 12, D}
-    end.
+% three_month() ->
+%     {{Y, M, D}, _} = calendar:local_time(),
+%     case M - 3 of
+%         NewM when NewM > 0 ->
+%             {Y, NewM, D};
+%         _NewM ->
+%             {Y - 1, 12, D}
+%     end.
 
-last_month() ->
-    {{Y, M, D}, _} = calendar:local_time(),
-    case D - 16 of
-        NewD when NewD > 0 ->
-            {Y, M, NewD};
-        NewD ->
-            case M - 1 of
-                NewM when NewM > 0 ->
-                    {Y, NewM, calendar:last_day_of_the_month(Y, NewM) + NewD};
-                _NewM ->
-                    {Y - 1, 12,
-                     calendar:last_day_of_the_month(Y - 1, 12) + NewD}
-            end
-    end.
+% last_month() ->
+%     {{Y, M, D}, _} = calendar:local_time(),
+%     case D - 16 of
+%         NewD when NewD > 0 ->
+%             {Y, M, NewD};
+%         NewD ->
+%             case M - 1 of
+%                 NewM when NewM > 0 ->
+%                     {Y, NewM, calendar:last_day_of_the_month(Y, NewM) + NewD};
+%                 _NewM ->
+%                     {Y - 1, 12,
+%                      calendar:last_day_of_the_month(Y - 1, 12) + NewD}
+%             end
+%     end.
 
 filter_msgs(App, Msgs) ->
   RegEx = "(.*)\\|\\|\\|(.*)\\|\\|\\|(.*)\\|\\|\\|(.*)",
