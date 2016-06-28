@@ -24,13 +24,17 @@ main_vrap([WD, A]) when A == "change"; A == "ch" ->
 main_vrap([WD, A]) when A == "push"; A == "ps" ->
     push:all([WD]);
 main_vrap([WD, A]) when A == "update"; A == "up" ->
-    updater:update_all([WD], ?REBAR_CFG);
+    updater:update_all([WD], ?REBAR_CFG, no_fast);
+main_vrap([WD, A, "--fast"]) when A == "update"; A == "up" ->
+    updater:update_all([WD], ?REBAR_CFG, fast);
 main_vrap([WD, A]) when A == "status"; A == "st" ->
     checker:checker([WD]);
 main_vrap([WD, A]) when A == "log"; A == "lg" ->
     log:show([WD]);
 main_vrap([WD, A]) when A == "load"; A == "ld" ->
-    updater:update_all([WD], ?REBAR_SAVE_CFG);
+    updater:update_all([WD], ?REBAR_SAVE_CFG, no_fast);
+main_vrap([WD, A, "--fast"]) when A == "load"; A == "ld" ->
+    updater:update_all([WD], ?REBAR_SAVE_CFG, fast);
 main_vrap([WD, A]) when A == "save"; A == "sa" ->
     save:save_all([WD]);
 main_vrap([A | Args]) when A == "tag"; A == "tg"; A == "branch"; A == "br" ->
@@ -60,7 +64,7 @@ main_vrap(["help", _]) ->
     io:format(
       "Usage: fd <command> [path] (fast deps)~n"
       "Commands:~n"
-      "  update (up) - For update rebar deps~n"
+      "  update (up) [--fast] - For update rebar deps. Flag --fast for fetch signle branch.~n"
       "  status (st) - Get status rebar deps~n"
       "  save   (sa) - Save deps on current state in rebar.config.save~n"
       "  load   (ld) - For load state from rebar.config.save~n"

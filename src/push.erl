@@ -33,15 +33,17 @@ all(Dir) ->
 
 do(Dir, App, _VSN, _Source, []) ->
     AppDir = filename:join(Dir, App),
-    Cmd = "git status --short",
-    Cmd1 = "git status",
-    {ok, Res1} = updater:cmd(AppDir, Cmd1, []),
-    Res2 = (nomatch /= re:run(lists:flatten(Res1), ".*by \\d+ commit.*")),
-    case updater:cmd(AppDir, Cmd, []) of
+    Cmd = "git push --tags --set-upstream origin ~ts",
+    Cmd1 = "git push --set-upstream origin ~ts",
+    Cmd2 = "git rev-parse --abbrev-ref HEAD",
+    {ok, Res2} = updater:cmd(AppDir, Cmd2, []),
+    {ok, Res1} = updater:cmd(AppDir, Cmd1, Res2),
+    Res3 = (nomatch /= re:run(lists:flatten(Res1), ".*by \\d+ commit.*")),
+    case updater:cmd(AppDir, Cmd, Res2) of
         {ok, []} ->
             {accum, App, {App, none}};
         {ok, _Res} ->
-            {accum, App, {App, AppDir, change, Res2}};
+            {accum, App, {App, AppDir, change, Res3}};
         {error, {1, []}} ->
             {ok, App, io_lib:format("\e[1m\e[31m~p\e[0m:~nDon't find in ~p",
                                     [App, AppDir])};

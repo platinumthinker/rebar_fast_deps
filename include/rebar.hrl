@@ -6,10 +6,14 @@
 
 -define(CONSOLE(Str, Args), io:format(Str ++ "~n", Args)).
 
--define(DEBUG(Str, Args), io:format(Str ++ "~n", Args)).
--define(INFO(Str, Args), io:format(Str ++ "~n", Args)).
--define(WARN(Str, Args), io:format(Str ++ "~n", Args)).
--define(ERROR(Str, Args), io:format(Str ++ "~n", Args)).
+%% Green
+-define(DEBUG(Str, Args), io:format("\e[32m" ++ Str ++ "\e[0m~n", Args)).
+%% Blue
+-define(INFO(Str, Args), io:format("\e[34m" ++ Str ++ "\e[0m~n", Args)).
+%% Yellow
+-define(WARN(Str, Args), io:format("\e[33m" ++ Str ++ "\e[0m~n", Args)).
+%% Red
+-define(ERROR(Str, Args), io:format("\e[31m" ++ Str ++ "\e[0m~n", Args)).
 
 -define(FMT(Str, Args), lists:flatten(io_lib:format(Str, Args))).
 
