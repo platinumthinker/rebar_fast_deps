@@ -11,7 +11,7 @@
 
 print(Dir) ->
     {ok, Res} = deps:foreach(Dir, ?MODULE, [], []),
-    UniqRes = lists:foldl(fun({_, _, Val, _, _}, Acc) ->
+    UniqRes = lists:foldl(fun({_, _, Val, _}, Acc) ->
         lists:umerge(Val, Acc)
     end, [], Res),
     lists:foreach(fun(Val) ->
@@ -25,22 +25,19 @@ create(Dir, Branch, IgnoredApp, Branches1) ->
     {ok, Res1} = deps:foreach(Dir, ?MODULE, [], []),
     Res = lists:usort(Res1),
     {Hashs, Branches} =
-        lists:foldl(fun({App, _, Branch1, Hash, _}, {Acc, Acc2}) ->
+        lists:foldl(fun({App, _, Branch1, Hash}, {Acc, Acc2}) ->
             {[{App, Hash} | Acc], [{App, Branch1} | Acc2]}
     end, {[], []}, Res),
     lists:foreach(
-        fun({App, AppDir, _, _, false}) ->
+        fun({App, AppDir, _, _}) ->
             Br = proplists:get_value(App, Branches),
                 case lists:member(App, IgnoredApp)
                         orelse lists:member(Branch, Br) of
                     true ->
-                        ?CONSOLE("Ignoring \e[31m~s\e[0m: already exist ~p",
-                                 [App, Branch]);
+                        ?WARN("Ignoring ~s: already exist ~p", [App, Branch]);
                     false ->
                         cfg_modifier(AppDir, Branch, Hashs, Branches1)
-              end;
-         (_) ->
-              none
+                end
     end, Res),
     cfg_modifier(Dir, Branch, Hashs, Branches1),
     ok.
@@ -85,9 +82,6 @@ deps_modifier({App, VSN, {git, Url, {branch, Branch1}}},
               {Acc, Branch}, Hash, Branches) ->
     GitDef = {git, Url, {branch, Branch1}, []},
     deps_modifier({App, VSN, GitDef}, {Acc, Branch}, Hash, Branches);
-deps_modifier(Dep = {_App, _VSN, {git, _Url, {tag, _Tag}}},
-              {Acc, Branch}, _Hash, _Branches) ->
-    {[ Dep | Acc ], Branch};
 deps_modifier({App, VSN, {git, Url, Opts = [raw]}}, Acc, Hash, Branches) ->
     GitDef = {git, Url, {branch, "HEAD"}, Opts},
     deps_modifier({App, VSN, GitDef}, Acc, Hash, Branches);
@@ -98,29 +92,15 @@ deps_modifier({App, VSN, {git, Url, {branch, "master"}, Opts = [raw]}},
               Acc, Hash, Branches) ->
     Git = {git, Url, {branch, "HEAD"}, Opts},
     deps_modifier({App, VSN, Git}, Acc, Hash, Branches);
-deps_modifier({App, VSN, {git, Url, {branch, Branch1}, Opts}},
-              {Acc, Branch}, Hash, Branches) ->
-    Git = case is_list(Opts) andalso lists:member(raw, Opts) of
-        true  -> {git, Url, Hash, [raw]};
-        false -> {git, Url, Hash}
-    end,
-    case re:run(Url, "(.*):external(.*)") of
-        nomatch ->
-            case lists:member(Branch1, Branches ++ ["HEAD"]) of
-                true ->
-                    case lists:member(raw, Opts) of
-                        true ->
-                            Git1 = {git, Url, {branch, Branch}, [raw]},
-                            {[ {App, VSN, Git1} | Acc ], Branch};
-                        false ->
-                            Git1 = {git, Url, {branch, Branch}},
-                            {[ {App, VSN, Git1} | Acc ], Branch}
-                    end;
-                false ->
-                    {[ {App, VSN, Git} | Acc ], Branch}
-            end;
-        {match, _} ->
-            {[ {App, VSN, Git} | Acc ], Branch}
+deps_modifier({App, VSN, {git, Url, _, Opts}},
+              {Acc, Branch}, _Hash, _Branches) ->
+    case lists:member(raw, Opts) of
+        true ->
+            Git1 = {git, Url, {branch, Branch}, [raw]},
+            {[ {App, VSN, Git1} | Acc ], Branch};
+        false ->
+            Git1 = {git, Url, {branch, Branch}},
+            {[ {App, VSN, Git1} | Acc ], Branch}
     end;
 deps_modifier(Dep, {Acc, Branch}, _Hash, _Branches) ->
     {[ Dep | Acc ], Branch}.
@@ -129,13 +109,10 @@ do(Dir, App, _VSN, _Source, []) ->
     AppDir = filename:join(Dir, App),
     Cmd = "git --no-pager branch --all",
     Cmd2 = "git --no-pager log -1 --oneline --pretty=tformat:'%h'",
-    Cmd3 = "git config --get remote.origin.url",
     {ok, Hash} = updater:cmd(AppDir, Cmd2, []),
-    {ok, Url} = updater:cmd(AppDir, Cmd3, []),
-    External = re:run(Url, "(.*):external(.*)") /= nomatch,
     {ok, Res1} = updater:cmd(AppDir, Cmd, []),
     Res = lists:foldl(
       fun(Val, Acc) ->
               [string:sub_string(Val, 3) | Acc]
       end, [], Res1),
-    {accum, App, {erlang:atom_to_list(App), AppDir, Res, Hash, External}}.
+    {accum, App, {erlang:atom_to_list(App), AppDir, Res, Hash}}.

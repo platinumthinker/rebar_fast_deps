@@ -10,11 +10,9 @@ main(Args) ->
     io:setopts([{encoding, unicode}]),
     main_vrap(Args).
 
-
 main_vrap([A|B]) when A == "change"; A == "ch" ->
 	{ok, Dir} = file:get_cwd(),
     changelog:create([Dir, B]);
-
 
 main_vrap([Command]) ->
     {ok, Dir} = file:get_cwd(),
@@ -25,7 +23,11 @@ main_vrap([WD, A]) when A == "push"; A == "ps" ->
     push:all([WD]);
 main_vrap([WD, A]) when A == "update"; A == "up" ->
     updater:update_all([WD], ?REBAR_CFG, no_fast);
+main_vrap([A, "--fast"]) when A == "update"; A == "up" ->
+	{ok, WD} = file:get_cwd(),
+    updater:update_all([WD], ?REBAR_CFG, fast);
 main_vrap([WD, A, "--fast"]) when A == "update"; A == "up" ->
+	{ok, WD} = file:get_cwd(),
     updater:update_all([WD], ?REBAR_CFG, fast);
 main_vrap([WD, A]) when A == "status"; A == "st" ->
     checker:checker([WD]);
