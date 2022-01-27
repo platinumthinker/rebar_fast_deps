@@ -10,20 +10,21 @@
 all(Dir, Fast) ->
     case filelib:is_file(?REBAR_SAVE_CFG) of
         true ->
-            SavedDeps = deps_to_map(deps:deps_list(?REBAR_SAVE_CFG)),
+            SavedDeps = deps:deps_map(?REBAR_SAVE_CFG),
             deps:foreach(Dir, ?MODULE, [], {SavedDeps, Fast}, ?REBAR_CFG);
         false ->
             updater:update_all(Dir, ?REBAR_CFG, Fast)
     end.
 
--spec app(Dir :: string(), App :: string() | atom(), fast | no_fast) -> {ok | error, _Res}.
-app(Dir, App, Fast) when is_list(App)->
+-spec app(Dir :: string(), App :: string() | atom(), fast | no_fast) ->
+             {ok | error, _Res}.
+app(Dir, App, Fast) when is_list(App) ->
     AppAtom = list_to_atom(App),
     app(Dir, AppAtom, Fast);
 app(_Dir, App, Fast) ->
     DepsDir = deps:deps_dir(?REBAR_CFG),
-    SavedDeps = deps_to_map(deps:deps_list(?REBAR_SAVE_CFG)),
-    Deps = deps_to_map(deps:deps_list(?REBAR_CFG)),
+    SavedDeps = deps:deps_map(?REBAR_SAVE_CFG),
+    Deps = deps:deps_map(?REBAR_CFG),
 
     case maps:find(App, Deps) of
         {ok, Source} ->
@@ -54,9 +55,16 @@ do(Dir, App, _VSN, OriginSource, {SavedDeps, Fast}) ->
     try
         case filelib:is_dir(AppDir) of
             true ->
+                Cmd = "git rev-parse HEAD",
+                {ok, RefBefore} = updater:cmd(AppDir, Cmd, []),
                 case updater:update_source(App, AppDir, Source) of
                     [] ->
-                        {nothing, App};
+                        case updater:cmd(AppDir, Cmd, []) of
+                            {ok, Res} when Res == RefBefore ->
+                                {nothing, App};
+                            _ ->
+                                {ok, App, io_lib:format(?FMT_UPDATE, [App, Source])}
+                        end;
                     _Line ->
                         {ok, App, io_lib:format(?FMT_UPDATE, [App, Source])}
                 end;
@@ -68,13 +76,3 @@ do(Dir, App, _VSN, OriginSource, {SavedDeps, Fast}) ->
         _:{badmatch, {error, {_Code, Reason}}} ->
             {error, App, Reason}
     end.
-
--spec deps_to_map(DepsList :: list()) -> map().
-deps_to_map(DepsList) ->
-    lists:foldl(fun ({App, _VSN, Source}, Acc) ->
-                        maps:put(App, Source, Acc);
-                    ({App, _VSN, Source, _Raw}, Acc) ->
-                        maps:put(App, Source, Acc)
-                end,
-                #{},
-                DepsList).

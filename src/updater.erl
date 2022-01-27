@@ -1,31 +1,64 @@
 -module(updater).
+
 -behaviour(deps).
 
--export([
-         update_all/3,
-         do/5,
-         do/6,
-         cmd/3,
-         update_source/3,
-         download_source/3
-        ]).
+-export([update_all/3, update_app/4, do/5, do/6, cmd/3, update_source/3,
+         download_source/3]).
 
 -include("rebar.hrl").
 
 -spec update_all(Dir :: string(), RebarCfg :: string(), fast | no_fast) ->
-    {ok | error, _Res}.
+                    {ok | error, _Res}.
 update_all(Dir, RebarCfg, Fast) ->
     deps:foreach(Dir, ?MODULE, ok, [Fast], RebarCfg).
 
+-spec update_app(Dir :: string(),
+                 App :: string() | atom(),
+                 RebarCfg :: string(),
+                 fast | no_fast) ->
+                    {ok | error, _Res}.
+update_app(Dir, App, RebarCfg, Fast) when is_list(App) ->
+    AtomApp = list_to_atom(App),
+    update_app(Dir, AtomApp, RebarCfg, Fast);
+update_app(_Dir, App, RebarCfg, Fast) ->
+    DepsDir = deps:deps_dir(RebarCfg),
+    Deps = deps:deps_map(RebarCfg),
+
+    case maps:find(App, Deps) of
+        {ok, Source} ->
+            VSN = "", % TODO
+            case do(DepsDir, App, VSN, Source, [Fast]) of
+                {ok, App, Output} ->
+                    ?CONSOLE(Output, []);
+                {nothing, App} ->
+                    ?CONSOLE("App already updated", []);
+                {error, App, Reason} ->
+                    ?ERROR("\e[1m\e[31m~p\e[0m: ~n~p", [App, Reason]),
+                    exit("Error when update dependency")
+            end;
+        error ->
+            ?ERROR("Error! App ~p does not exist. Please, add it in rebar.config", [App]),
+            exit("Error: no app")
+    end.
+
 do(Dir, App, VSN, Source, Args) ->
     do(Dir, App, VSN, Source, Args, false).
+
 do(Dir, App, _VSN, Source, [Fast], _IsVerbose) ->
     AppDir = filename:join(Dir, App),
     try
         case filelib:is_dir(AppDir) of
             true ->
+                Cmd = "git rev-parse HEAD",
+                {ok, RefBefore} = updater:cmd(AppDir, Cmd, []),
                 case update_source(App, AppDir, Source) of
-                    [] -> {nothing, App};
+                    [] ->
+                        case updater:cmd(AppDir, Cmd, []) of
+                            {ok, Res} when Res == RefBefore ->
+                                {nothing, App};
+                            _ ->
+                                {ok, App, io_lib:format(?FMT_UPDATE, [App, Source])}
+                        end;
                     _Line ->
                         {ok, App, io_lib:format(?FMT_UPDATE, [App, Source])}
                 end;
@@ -39,7 +72,8 @@ do(Dir, App, _VSN, Source, [Fast], _IsVerbose) ->
     end.
 
 update_source(App, AppDir, URL) ->
-    Cmd = "git --no-pager log --branches --not --remotes --quiet --pretty=tformat:'%h %an %s'",
+    Cmd = "git --no-pager log --branches --not --remotes --quiet --pretty=tform"
+          "at:'%h %an %s'",
     case cmd(AppDir, Cmd) of
         {ok, []} ->
             case cmd(AppDir, "git status --porcelain") of
@@ -60,7 +94,6 @@ update_source(App, AppDir, URL) ->
             []
     end.
 
-
 update_source_(AppDir, {git, Url, [raw]}) ->
     update_source_(AppDir, {git, Url, {branch, "master"}});
 update_source_(AppDir, {git, Url, {branch, Branch}, [raw]}) ->
@@ -70,9 +103,9 @@ update_source_(AppDir, {git, Url}) ->
 update_source_(AppDir, {git, Url, ""}) ->
     update_source_(AppDir, {git, Url, {branch, "master"}});
 update_source_(AppDir, {git, _Url, {branch, Branch}}) ->
-    {ok, Line} = cmd(AppDir, "git fetch origin"),
+    cmd(AppDir, "git fetch origin"),
     cmd(AppDir, "git checkout -q ~s", [Branch]),
-    cmd(AppDir, "git pull --ff-only --no-rebase -q origin ~s", [Branch]),
+    {ok, Line} = cmd(AppDir, "git pull --ff-only --no-rebase -q origin ~s", [Branch]),
     Line;
 update_source_(AppDir, {git, _Url, {tag, Tag}}) ->
     {ok, Line} = cmd(AppDir, "git fetch origin"),
@@ -128,19 +161,20 @@ download_source(AppDir, {git, Url, Rev}, _Fast) ->
 
 cmd(Dir, Str) ->
     cmd(Dir, Str, []).
+
 cmd(Dir, Str, Args) ->
     try
         cmd(Dir, Str, Args, 0)
     catch
         Err ->
-            io:format("Error ~p~n"
-                      "Stacktrace: ~p", [Err, erlang:get_stacktrace()]),
+            io:format("Error ~p~nStacktrace: ~p", [Err, erlang:get_stacktrace()]),
             erlang:halt(Err)
     end.
 
 cmd(Dir, Str, Args, Retry) ->
-    Port = erlang:open_port({spawn, ?FMT(Str, Args)}, [{cd, Dir}, exit_status,
-                {line, 100}, hide, stderr_to_stdout, binary]),
+    Port =
+        erlang:open_port({spawn, ?FMT(Str, Args)},
+                         [{cd, Dir}, exit_status, {line, 100}, hide, stderr_to_stdout, binary]),
     case cmd_loop(Port, <<>>) of
         {ok, Output} ->
             {ok, Output};
@@ -165,7 +199,8 @@ cmd_loop(Port, Acc) ->
         {Port, {exit_status, Rc}} ->
             {error, {Rc, replace_eol(io_lib:format("~ts", [Acc]))}}
     end.
+
 %Вырезвает все пустые строки.
 replace_eol(Line) ->
-    [ binary_to_list(L) ||
-      L <- re:split(Line, "\\n", [unicode, {return, binary}]), L =/= <<>>] .
+    [binary_to_list(L)
+     || L <- re:split(Line, "\\n", [unicode, {return, binary}]), L =/= <<>>].

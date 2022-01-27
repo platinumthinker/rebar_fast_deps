@@ -1,6 +1,6 @@
 -module(deps).
 
--export([foreach/4, foreach/5, foreach/6, deps_list/1, deps_dir/1]).
+-export([foreach/4, foreach/5, foreach/6, deps_list/1, deps_map/1, deps_dir/1]).
 
 -include("rebar.hrl").
 
@@ -26,6 +26,17 @@ foreach(Dir, Module, Acc, Args, Delay, RebarCfg) ->
     DepsList = deps_list(RebarCfg),
     DepsFolder = filename:join(Dir, DepsFldr),
     bfs_step(Module, DepsFolder, DepsList, Acc, Delay, Args).
+
+-spec deps_map(RebarCfg :: string()) -> DepsMap :: map().
+deps_map(RebarCfg) ->
+    DepsList = deps_list(RebarCfg),
+    lists:foldl(fun ({App, _VSN, Source}, Acc) ->
+                        maps:put(App, Source, Acc);
+                    ({App, _VSN, Source, _Raw}, Acc) ->
+                        maps:put(App, Source, Acc)
+                end,
+                #{},
+                DepsList).
 
 -spec deps_list(RebarCfg :: string()) -> DepsList :: list().
 deps_list(RebarCfg) ->
