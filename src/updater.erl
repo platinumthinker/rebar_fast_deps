@@ -5,12 +5,12 @@
          update_all/3,
          do/5,
          do/6,
-         cmd/3
+         cmd/3,
+         update_source/3,
+         download_source/3
         ]).
 
 -include("rebar.hrl").
--define(FMT_UPDATE, "Update \e[1m\e[32m~p\e[0m from ~200p").
--define(FMT_DOWNLOAD, "Download \e[1m\e[32m~p\e[0m from ~200p").
 
 -spec update_all(Dir :: string(), RebarCfg :: string(), fast | no_fast) ->
     {ok | error, _Res}.
@@ -79,9 +79,15 @@ update_source_(AppDir, {git, _Url, {tag, Tag}}) ->
     cmd(AppDir, "git checkout -q ~s", [Tag]),
     Line;
 update_source_(AppDir, {git, _Url, Refspec}) ->
-    {ok, Line} = cmd(AppDir, "git fetch origin"),
-    cmd(AppDir, "git checkout -q ~s", [Refspec]),
-    Line.
+    Cmd = "git rev-parse HEAD",
+    case updater:cmd(AppDir, Cmd, []) of
+        {ok, Res} when Res == Refspec ->
+            [];
+        _ ->
+            {ok, Line} = cmd(AppDir, "git fetch origin"),
+            cmd(AppDir, "git checkout -q ~s", [Refspec]),
+            Line
+    end.
 
 download_source(AppDir, {git, Url}, Fast) ->
     download_source(AppDir, {git, Url, {branch, "master"}}, Fast);

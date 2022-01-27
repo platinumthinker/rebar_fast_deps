@@ -23,12 +23,18 @@ main_vrap([WD, A]) when A == "push"; A == "ps" ->
     push:all([WD]);
 main_vrap([WD, A]) when A == "update"; A == "up" ->
     updater:update_all([WD], ?REBAR_CFG, no_fast);
-main_vrap([A, "--fast"]) when A == "update"; A == "up" ->
-	{ok, WD} = file:get_cwd(),
-    updater:update_all([WD], ?REBAR_CFG, fast);
 main_vrap([WD, A, "--fast"]) when A == "update"; A == "up" ->
 	{ok, WD} = file:get_cwd(),
     updater:update_all([WD], ?REBAR_CFG, fast);
+main_vrap([WD, A]) when A == "get"; A == "gt" ->
+    {ok, WD} = file:get_cwd(),
+    get:get_all(WD, no_fast);
+main_vrap([WD, A, "--fast"]) when A == "get"; A == "gt" ->
+    {ok, WD} = file:get_cwd(),
+    get:all(WD, fast);
+main_vrap([A, App]) when A == "get"; A == "gt" ->
+    {ok, WD} = file:get_cwd(),
+    get:app(WD, App, no_fast);
 main_vrap([WD, A]) when A == "status"; A == "st" ->
     checker:checker([WD]);
 main_vrap([WD, A]) when A == "log"; A == "lg" ->
@@ -67,6 +73,7 @@ main_vrap(["help", _]) ->
       "Usage: fd <command> [path] (fast deps)~n"
       "Commands:~n"
       "  update (up) [--fast] - For update rebar deps. Flag --fast for fetch signle branch.~n"
+      "  get (gt) [--fast | APP] - For geting locked rebar deps. If lock file doesn't exist work like update.~n"
       "  status (st) - Get status rebar deps~n"
       "  save   (sa) - Save deps on current state in rebar.config.save~n"
       "  load   (ld) - For load state from rebar.config.save~n"

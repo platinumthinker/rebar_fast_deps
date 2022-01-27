@@ -21,3 +21,5 @@
 -define(REBAR_SAVE_CFG, "rebar.config.save").
 -define(TIMEOUT, 200000).
 -define(RETRY, 10).
+-define(FMT_UPDATE, "Update \e[1m\e[32m~p\e[0m from ~200p").
+-define(FMT_DOWNLOAD, "Download \e[1m\e[32m~p\e[0m from ~200p").
