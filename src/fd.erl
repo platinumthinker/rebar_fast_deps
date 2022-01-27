@@ -23,12 +23,21 @@ main_vrap([WD, A]) when A == "push"; A == "ps" ->
     push:all([WD]);
 main_vrap([WD, A]) when A == "update"; A == "up" ->
     updater:update_all([WD], ?REBAR_CFG, no_fast);
-main_vrap([A, "--fast"]) when A == "update"; A == "up" ->
-	{ok, WD} = file:get_cwd(),
-    updater:update_all([WD], ?REBAR_CFG, fast);
 main_vrap([WD, A, "--fast"]) when A == "update"; A == "up" ->
 	{ok, WD} = file:get_cwd(),
     updater:update_all([WD], ?REBAR_CFG, fast);
+main_vrap([A, App]) when A == "update"; A == "up" ->
+    {ok, WD} = file:get_cwd(),
+    updater:update_app([WD], App, ?REBAR_CFG, no_fast);
+main_vrap([WD, A]) when A == "get"; A == "gt" ->
+    {ok, WD} = file:get_cwd(),
+    get:all(WD, no_fast);
+main_vrap([WD, A, "--fast"]) when A == "get"; A == "gt" ->
+    {ok, WD} = file:get_cwd(),
+    get:all(WD, fast);
+main_vrap([A, App]) when A == "get"; A == "gt" ->
+    {ok, WD} = file:get_cwd(),
+    get:app(WD, App, no_fast);
 main_vrap([WD, A]) when A == "status"; A == "st" ->
     checker:checker([WD]);
 main_vrap([WD, A]) when A == "log"; A == "lg" ->
@@ -66,7 +75,8 @@ main_vrap(["help", _]) ->
     io:format(
       "Usage: fd <command> [path] (fast deps)~n"
       "Commands:~n"
-      "  update (up) [--fast] - For update rebar deps. Flag --fast for fetch signle branch.~n"
+      "  update (up) [--fast| APP] - For update rebar deps. Flag --fast for fetch signle branch.~n"
+      "  get (gt) [--fast | APP] - For geting locked rebar deps. If lock file doesn't exist work like update.~n"
       "  status (st) - Get status rebar deps~n"
       "  save   (sa) - Save deps on current state in rebar.config.save~n"
       "  load   (ld) - For load state from rebar.config.save~n"
@@ -78,6 +88,8 @@ main_vrap(["help", _]) ->
       "  push   (ps) - For all modificate push~n"
       "  tag    (tg) - list tags~n"
       "  tag 0.1 --ignore app1 app2 - Create tag 0.1 without ignores app~n"
+      "~nNotes:~n"
+      "  APP - dependency name. If APP does not exist in rebar.config or rebar.cofnig.save error will be occurred.~n"
      );
 main_vrap(Args) ->
     io:format("Command ~p not recognized.~n", [Args]),
