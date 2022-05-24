@@ -83,8 +83,7 @@ create([Dir, Option]) ->
                 check_table_delete(FirstDel)
         end
     catch
-        E:A ->
-            io:format("Error ~p:~p, ~p~n", [E, A, erlang:get_stacktrace()])
+        E:A:S -> io:format("Error ~p:~p,~n~p~n", [E, A, S])
     end.
 
 

@@ -126,10 +126,10 @@ cmd(Dir, Str, Args) ->
     try
         cmd(Dir, Str, Args, 0)
     catch
-        Err ->
-            io:format("Error ~p~n"
-                      "Stacktrace: ~p", [Err, erlang:get_stacktrace()]),
-            erlang:halt(Err)
+        E:A:S ->
+            io:format("Error ~p:~p~n"
+                      "Stacktrace: ~p", [E,A,S]),
+            erlang:halt(E)
     end.
 
 cmd(Dir, Str, Args, Retry) ->
