@@ -21,9 +21,7 @@ create([Dir, Option]) ->
                     proplists:get_value('max-count', OptionList, ""),
                     proplists:get_value('dir', OptionList, "rebar.config.save")
                 };
-            {error, ReasonErr}->
-                io:format("~s~n", [ReasonErr]),
-                {"", "rebar.config.save"}
+            {error, ReasonErr}-> exit(ReasonErr)
         end,
         case filelib:is_file(DirRebarSave) of
             true ->
@@ -59,7 +57,8 @@ create([Dir, Option]) ->
                         exit("Error: " ++ Reason)
                 end;
             false->
-                exit("File " ++ DirRebarSave ++ " does not exist")
+                exit("File " ++ DirRebarSave ++ " does not exists. "
+		     "Run 'fd save' before.")
         end,
         {ok, ListDeps} = case Count of
             ""->
@@ -83,7 +82,7 @@ create([Dir, Option]) ->
                 check_table_delete(FirstDel)
         end
     catch
-        E:A:S -> io:format("Error ~p:~p,~n~p~n", [E, A, S])
+        _:E:S -> io:format("Error ~p~n~p~n", [E, S])
     end.
 
 
@@ -153,7 +152,9 @@ get_param([[$-, $-|A], [$-, $-|_B]|_T], _Res)->
     {error, "Option " ++ A ++ " is lost"};
 get_param([A, B|T], Res)->
     O = re:replace(list_to_binary(A), "--", "", [global, {return, list}]),
-    get_param(T, [{list_to_atom(O), B}|Res]). %Функция разбора параметров.
+    get_param(T, [{list_to_atom(O), B}|Res]);
+get_param(Other, _) ->
+    {error, lists:flatten(io_lib:format("Unknown option: ~p", [Other]))}.
 
 
 form_cmd("", "") ->
